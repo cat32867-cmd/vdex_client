@@ -49,7 +49,7 @@ const VX_KERNEL_REGISTRY = {
 };
 
 const VXConfig = {
-    API_BEACON: 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/server.txt',
+    API_BEACON: 'https://api.github.com/repos/cat32867-cmd/vdex-data/contents/server.txt',
     DB_NAME: 'VX_DataStore',
     DB_VERSION: 1,
     DEFAULT_CHANNELS: [
@@ -85,26 +85,32 @@ const VXAccounts = {
         localStorage.setItem(this.storageKey, JSON.stringify(accounts));
     },
     
-    hashPassword(password, salt = 'vx_salt') {
-        const str = salt + password + salt.split('').reverse().join('');
-        return btoa(str);
+    async hashPassword(password) {
+        // SHA-256 через WebCrypto API — нельзя обратить в отличие от btoa
+        const encoder = new TextEncoder();
+        const data = encoder.encode('vx_salt_2024:' + password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
-    
-    verify(nickname, password) {
+
+    async verify(nickname, password) {
         const accounts = this.getAll();
         const acc = accounts[nickname];
         if (!acc) return false;
-        return acc.passwordHash === this.hashPassword(password);
+        const hash = await this.hashPassword(password);
+        return acc.passwordHash === hash;
     },
-    
-    register(nickname, password, uid = null) {
+
+    async register(nickname, password, uid = null) {
         const accounts = this.getAll();
         if (accounts[nickname]) {
             return { success: false, error: 'Позывной уже занят' };
         }
         const newUid = uid || ('node_' + Math.random().toString(36).substr(2, 9));
+        const passwordHash = await this.hashPassword(password);
         accounts[nickname] = {
-            passwordHash: this.hashPassword(password),
+            passwordHash,
             uid: newUid,
             avatar: null,
             createdAt: Date.now()
@@ -521,7 +527,7 @@ class VXInterface {
             localStorage.removeItem('vx_uuid');
             localStorage.removeItem('vx_avatar');
             localStorage.removeItem('vx_pass_hash');
-            sessionStorage.removeItem('vx_temp_password');
+            delete VXState._pendingHash;
             location.reload(); 
         });
         document.getElementById('btn-search-user').addEventListener('click', () => this.openModal('modal-search-user'));
@@ -708,7 +714,7 @@ class VXInterface {
             submitBtn.innerText = 'СОЗДАТЬ';
         });
 
-        const handleAuth = () => {
+        const handleAuth = async () => {
             const nick = nickInput.value.trim();
             const pass = passInput.value;
             
@@ -722,28 +728,33 @@ class VXInterface {
             }
             
             if (this.authMode === 'register') {
-                const result = VXAccounts.register(nick, pass);
+                const result = await VXAccounts.register(nick, pass);
                 if (result.success) {
                     VXState.user.nickname = nick;
                     VXState.user.uid = result.uid;
                     localStorage.setItem('vx_nick', nick);
                     localStorage.setItem('vx_uuid', result.uid);
-                    localStorage.setItem('vx_pass_hash', VXAccounts.hashPassword(pass));
-                    sessionStorage.setItem('vx_temp_password', pass);
+                    // Хешируем для хранения — пароль в открытом виде нигде не сохраняем
+                    const hash = await VXAccounts.hashPassword(pass);
+                    localStorage.setItem('vx_pass_hash', hash);
                     sessionStorage.setItem('vx_is_new_registration', 'true');
+                    // Временно держим хеш в памяти для передачи на сервер
+                    VXState._pendingHash = hash;
                     this.showToast("Узел успешно зарегистрирован", "info");
                     VXApp.startSequence();
                 } else {
                     this.showToast(result.error, "error");
                 }
             } else {
-                if (VXAccounts.verify(nick, pass)) {
+                if (await VXAccounts.verify(nick, pass)) {
                     const uid = VXAccounts.getUid(nick);
                     VXState.user.nickname = nick;
                     VXState.user.uid = uid;
                     localStorage.setItem('vx_nick', nick);
                     localStorage.setItem('vx_uuid', uid);
-                    localStorage.setItem('vx_pass_hash', VXAccounts.hashPassword(pass));
+                    const hash = await VXAccounts.hashPassword(pass);
+                    localStorage.setItem('vx_pass_hash', hash);
+                    VXState._pendingHash = hash;
                     const accounts = VXAccounts.getAll();
                     if (accounts[nick]?.avatar) {
                         VXState.user.avatar = accounts[nick].avatar;
@@ -751,7 +762,6 @@ class VXInterface {
                     } else {
                         VXState.user.avatar = null;
                     }
-                    sessionStorage.setItem('vx_temp_password', pass);
                     this.showToast("Идентификация подтверждена", "info");
                     VXApp.startSequence();
                 } else {
@@ -1173,12 +1183,13 @@ class VXMedia {
 
 class VXNetwork {
     async fetchBeacon() {
-        VXApp.UI.appendSystem("ЗАПРОС КООРДИНАТ СЕРВЕРА (RAW GITHUB)...");
+        VXApp.UI.appendSystem("ЗАПРОС КООРДИНАТ СЕРВЕРА...");
         try {
-            const res = await fetch(`${VXConfig.API_BEACON}?t=${Date.now()}`);
+            const res = await fetch(VXConfig.API_BEACON, {
+                headers: { 'Accept': 'application/vnd.github.v3.raw' }
+            });
             if (!res.ok) throw new Error("HTTP " + res.status);
-            let text = await res.text();
-            let wsUrl = text.trim();
+            let wsUrl = (await res.text()).trim();
             if (!wsUrl.startsWith('ws')) wsUrl = 'wss://' + wsUrl;
             this.connect(wsUrl);
         } catch (e) {
@@ -1201,13 +1212,10 @@ class VXNetwork {
             VXApp.UI.showToast("Связь установлена", "info");
             VXApp.UI.appendSystem("HANDSHAKE УСПЕШЕН.");
             
-            let password = sessionStorage.getItem('vx_temp_password');
-            let passwordHash;
-            if (password) {
-                passwordHash = VXAccounts.hashPassword(password);
-            } else {
-                passwordHash = localStorage.getItem('vx_pass_hash');
-            }
+            // Берём хеш из памяти (если только что вошли) или из localStorage
+            const passwordHash = VXState._pendingHash || localStorage.getItem('vx_pass_hash');
+            // После использования очищаем из памяти
+            delete VXState._pendingHash;
             
             const justRegistered = sessionStorage.getItem('vx_is_new_registration') === 'true';
             if (justRegistered) sessionStorage.removeItem('vx_is_new_registration');
@@ -1278,19 +1286,21 @@ class VXNetwork {
                     if(!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     VXApp.UI.renderMessageHTML(data, false);
                 }
+                else if (data.type === "auth_error") {
+                    // Явный тип для ошибок авторизации — не надо парсить текст
+                    VXApp.UI.appendSystem(`[AUTH ERROR] ${data.text}`);
+                    VXApp.UI.showToast(data.text, "error");
+                    VXApp.UI.openModal('modal-auth');
+                    localStorage.removeItem('vx_nick');
+                    localStorage.removeItem('vx_uuid');
+                    localStorage.removeItem('vx_pass_hash');
+                }
+                else if (data.type === "login_success") {
+                    // Успешный вход/регистрация подтверждены сервером
+                    VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
+                }
                 else if (data.type === "system") {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
-                    const errorText = data.text.toLowerCase();
-                    if (errorText.includes("ошибка") || errorText.includes("не найден") || errorText.includes("неверный пароль") || errorText.includes("не указан uid")) {
-                        const authModal = document.getElementById('modal-auth');
-                        if (authModal && !authModal.classList.contains('active')) {
-                            VXApp.UI.openModal('modal-auth');
-                        }
-                        localStorage.removeItem('vx_nick');
-                        localStorage.removeItem('vx_uuid');
-                        localStorage.removeItem('vx_pass_hash');
-                        sessionStorage.removeItem('vx_temp_password');
-                    }
                 } else if (data.type === "members_list") {
                     VXApp.UI.updateMembersList(data.members);
                 } else if (data.type === "profile_updated") {
