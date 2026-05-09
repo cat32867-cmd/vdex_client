@@ -740,6 +740,7 @@ class VXInterface {
                     sessionStorage.setItem('vx_is_new_registration', 'true');
                     // Временно держим хеш в памяти для передачи на сервер
                     VXState._pendingHash = hash;
+                    VXState._pendingAuthType = 'registration';
                     this.showToast("Узел успешно зарегистрирован", "info");
                     VXApp.startSequence();
                 } else {
@@ -755,6 +756,7 @@ class VXInterface {
                     const hash = await VXAccounts.hashPassword(pass);
                     localStorage.setItem('vx_pass_hash', hash);
                     VXState._pendingHash = hash;
+                    VXState._pendingAuthType = 'login';
                     const accounts = VXAccounts.getAll();
                     if (accounts[nick]?.avatar) {
                         VXState.user.avatar = accounts[nick].avatar;
@@ -1212,18 +1214,11 @@ class VXNetwork {
             VXApp.UI.showToast("Связь установлена", "info");
             VXApp.UI.appendSystem("HANDSHAKE УСПЕШЕН.");
             
-            // Берём хеш из памяти (если только что вошли) или из localStorage
+            // Берём хеш и тип авторизации сохранённые при входе/регистрации
             const passwordHash = VXState._pendingHash || localStorage.getItem('vx_pass_hash');
-            // После использования очищаем из памяти
+            const authType = VXState._pendingAuthType || 'login';
             delete VXState._pendingHash;
-            
-            const justRegistered = sessionStorage.getItem('vx_is_new_registration') === 'true';
-            if (justRegistered) sessionStorage.removeItem('vx_is_new_registration');
-            
-            const hasLocalAccount = !!localStorage.getItem('vx_accounts');
-            const uidExistsLocally = VXState.user.uid && VXAccounts.getUid(VXState.user.nickname);
-            const isNewRegistration = justRegistered || !hasLocalAccount || !uidExistsLocally;
-            const authType = isNewRegistration ? "registration" : "login";
+            delete VXState._pendingAuthType;
 
             this.transmit({ 
                 type: authType, 
@@ -1397,6 +1392,8 @@ const VXApp = {
                 if (accounts[savedNick].avatar) {
                     VXState.user.avatar = accounts[savedNick].avatar;
                 }
+                VXState._pendingHash = localStorage.getItem('vx_pass_hash');
+                VXState._pendingAuthType = 'login';
                 await this.startSequence();
                 return;
             } else {
