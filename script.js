@@ -737,7 +737,6 @@ class VXInterface {
                     // Хешируем для хранения — пароль в открытом виде нигде не сохраняем
                     const hash = await VXAccounts.hashPassword(pass);
                     localStorage.setItem('vx_pass_hash', hash);
-                    sessionStorage.setItem('vx_is_new_registration', 'true');
                     // Временно держим хеш в памяти для передачи на сервер
                     VXState._pendingHash = hash;
                     VXState._pendingAuthType = 'registration';
@@ -1224,6 +1223,7 @@ class VXNetwork {
                 type: authType, 
                 uid: VXState.user.uid, 
                 nickname: VXState.user.nickname,
+                avatar: VXState.user.avatar,
                 password: passwordHash
             });
         };
