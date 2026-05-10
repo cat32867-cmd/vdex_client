@@ -734,10 +734,8 @@ class VXInterface {
                     VXState.user.uid = result.uid;
                     localStorage.setItem('vx_nick', nick);
                     localStorage.setItem('vx_uuid', result.uid);
-                    // Хешируем для хранения — пароль в открытом виде нигде не сохраняем
                     const hash = await VXAccounts.hashPassword(pass);
                     localStorage.setItem('vx_pass_hash', hash);
-                    // Временно держим хеш в памяти для передачи на сервер
                     VXState._pendingHash = hash;
                     VXState._pendingAuthType = 'registration';
                     this.showToast("Узел успешно зарегистрирован", "info");
@@ -746,28 +744,19 @@ class VXInterface {
                     this.showToast(result.error, "error");
                 }
             } else {
-                if (await VXAccounts.verify(nick, pass)) {
-                    const uid = VXAccounts.getUid(nick);
-                    VXState.user.nickname = nick;
-                    VXState.user.uid = uid;
-                    localStorage.setItem('vx_nick', nick);
-                    localStorage.setItem('vx_uuid', uid);
-                    const hash = await VXAccounts.hashPassword(pass);
-                    localStorage.setItem('vx_pass_hash', hash);
-                    VXState._pendingHash = hash;
-                    VXState._pendingAuthType = 'login';
-                    const accounts = VXAccounts.getAll();
-                    if (accounts[nick]?.avatar) {
-                        VXState.user.avatar = accounts[nick].avatar;
-                        localStorage.setItem('vx_avatar', accounts[nick].avatar);
-                    } else {
-                        VXState.user.avatar = null;
-                    }
-                    this.showToast("Идентификация подтверждена", "info");
-                    VXApp.startSequence();
-                } else {
-                    this.showToast("Неверное имя или ключ доступа", "error");
-                }
+                // Доверяем серверу аутентификацию на новом устройстве (локальной БД еще нет)
+                const hash = await VXAccounts.hashPassword(pass);
+                const uid = VXAccounts.getUid(nick) || ('node_' + Math.random().toString(36).substr(2, 9));
+                
+                VXState.user.nickname = nick;
+                VXState.user.uid = uid;
+                
+                // Временно сохраняем хэш, чтобы потом записать в localStorage при успешном ответе
+                VXState._pendingHash = hash;
+                VXState._pendingAuthType = 'login';
+                
+                this.showToast("Отправка запроса на сервер...", "info");
+                VXApp.startSequence();
             }
         };
 
@@ -1291,8 +1280,30 @@ class VXNetwork {
                     localStorage.removeItem('vx_pass_hash');
                 }
                 else if (data.type === "login_success") {
-                    // Успешный вход/регистрация подтверждены сервером
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
+                    
+                    // --- СИНХРОНИЗАЦИЯ УСТРОЙСТВ: Сохраняем правильный UID от сервера ---
+                    VXState.user.uid = data.uid;
+                    VXState.user.nickname = data.nickname;
+                    if (data.avatar) VXState.user.avatar = data.avatar;
+                    
+                    localStorage.setItem('vx_uuid', data.uid);
+                    localStorage.setItem('vx_nick', data.nickname);
+                    if (data.avatar) localStorage.setItem('vx_avatar', data.avatar);
+                    
+                    // Восстанавливаем локальную базу VXAccounts для этого устройства
+                    const accounts = VXAccounts.getAll();
+                    accounts[data.nickname] = {
+                        passwordHash: VXState._pendingHash || localStorage.getItem('vx_pass_hash'),
+                        uid: data.uid,
+                        avatar: data.avatar,
+                        createdAt: Date.now()
+                    };
+                    VXAccounts.saveAll(accounts);
+                    
+                    // Обновляем UI с правильным UID
+                    const nodeIdDisplay = document.getElementById('node-id-display');
+                    if (nodeIdDisplay) nodeIdDisplay.innerText = data.uid.toUpperCase();
                 }
                 else if (data.type === "system") {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
