@@ -150,6 +150,52 @@ const VXAccounts = {
     }
 };
 
+// ==========================================
+// ========== ДОБАВЛЕННЫЙ МОДУЛЬ ИИ ==========
+// ==========================================
+class VXLocalAI {
+    constructor() {
+        this.model = null;
+        this.generator = null;
+        this.isReady = false;
+        this.isLoading = false;
+    }
+    async init() {
+        if (this.isReady || this.isLoading) return;
+        this.isLoading = true;
+        VXApp.UI.appendSystem("ЗАПУСК ИИ-МОДУЛЯ: Инициализация нейросети...");
+        try {
+            const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.0');
+            const { pipeline, env } = transformers;
+            env.allowLocalModels = false;
+            // Загрузка легковесной модели ИИ в кэш
+            this.generator = await pipeline('text-generation', 'Xenova/TinyLlama-1.1B-Chat-v1.0');
+            this.isReady = true;
+            this.isLoading = false;
+            VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН. Введите /ai [запрос] или используйте кнопку.");
+        } catch (error) {
+            VXApp.UI.appendSystem(`ОШИБКА ИИ: ${error.message}`);
+            this.isLoading = false;
+        }
+    }
+    async ask(prompt) {
+        if (!this.isReady) {
+            if (!this.isLoading) this.init();
+            return "ИИ-модуль загружается, подождите немного...";
+        }
+        VXApp.UI.appendSystem(`[AI_THINKING]: Обработка...`);
+        const formattedPrompt = `<|system|>\nТы полезный ИИ-ассистент, встроенный в мессенджер Vdex. Отвечай кратко.\n<|user|>\n${prompt}\n<|assistant|>\n`;
+        try {
+            const output = await this.generator(formattedPrompt, { max_new_tokens: 150, temperature: 0.7, do_sample: true });
+            const fullText = output[0].generated_text;
+            return (fullText.split('<|assistant|>\n')[1] || fullText).trim();
+        } catch (error) { 
+            return `СБОЙ ГЕНЕРАЦИИ: ${error.message}`; 
+        }
+    }
+}
+// ==========================================
+
 class VXIndexedDB {
     constructor() { this.db = null; }
     async init() {
@@ -690,6 +736,22 @@ class VXInterface {
             });
         }
 
+        // ===== ДОБАВЛЕН ОБРАБОТЧИК ДЛЯ КНОПКИ AI =====
+        const aiBtn = document.getElementById('btn-call-ai');
+        if (aiBtn) {
+            aiBtn.addEventListener('click', () => {
+                const txt = this.els.input.value.trim();
+                if (!txt) {
+                    this.showToast("Введите текст запроса для ИИ в поле ввода", "warn");
+                    return;
+                }
+                // Имитируем ввод команды /ai, чтобы код прошел через основной обработчик
+                this.els.input.value = '/ai ' + txt;
+                this.handleCommandOrMessage();
+            });
+        }
+        // =============================================
+
         // ===== ОБРАБОТЧИКИ АУТЕНТИФИКАЦИИ =====
         const modeLoginBtn = document.getElementById('auth-mode-login');
         const modeRegBtn = document.getElementById('auth-mode-register');
@@ -967,8 +1029,11 @@ class VXInterface {
         if (this.isSending) return;
         const txt = this.els.input.value.trim();
         if (!txt) return;
+
+        // ===== ДОБАВЛЕНА ОБРАБОТКА КОМАНДЫ /AI =====
         if (txt.startsWith('/')) {
             const cmd = txt.split(' ')[0].toLowerCase();
+            
             if (cmd === '/clear') {
                 this.els.flow.innerHTML = '';
                 this.appendSystem('UI_CACHE_CLEARED');
@@ -977,7 +1042,33 @@ class VXInterface {
                 if(parts[1]) this.setTheme(parts[1]);
                 else this.appendSystem('Доступно: /theme dark | crimson | ocean');
             } else if (cmd === '/help') {
-                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /help');
+                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /ai [запрос], /help');
+            } else if (cmd === '/ai') {
+                const prompt = txt.substring(4).trim(); // убираем '/ai ' из строки
+                if (!prompt) {
+                    this.appendSystem('Использование: /ai [ваш вопрос]');
+                    return;
+                }
+                this.els.input.value = ''; 
+                this.els.input.style.height = '40px';
+                this.els.btnSend.classList.remove('active');
+                
+                VXApp.AI.ask(prompt).then(aiResponse => {
+                    const msgData = {
+                        id: Date.now().toString(),
+                        type: "chat",
+                        uid: "vx_ai_core",
+                        nickname: "VX_AI",
+                        text: `[ЗАПРОС]: ${prompt}\n[ОТВЕТ]: ${aiResponse}`,
+                        isEncrypted: false,
+                        faction: VXState.ui.activeChannelId,
+                        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+                        timestamp: Date.now()
+                    };
+                    VXApp.Network.transmit(msgData); // Кидаем в общую сеть
+                    this.renderMessageHTML(msgData, false);
+                });
+                return;
             } else {
                 this.appendSystem(`UNKNOWN COMMAND: ${cmd}`);
             }
@@ -986,6 +1077,7 @@ class VXInterface {
             this.els.btnSend.classList.remove('active');
             return;
         }
+        // ===========================================
         
         this.isSending = true;
         this.els.btnSend.classList.remove('active');
@@ -1385,6 +1477,7 @@ const VXApp = {
     Network: new VXNetwork(),
     WebRTC: new VXWebRTCManager(),
     SearchManager: new VXSearchManager(),
+    AI: new VXLocalAI(), // ===== ДОБАВЛЕНА ИНИЦИАЛИЗАЦИЯ ИИ =====
     Effects: null,
     async init() {
         await this.Database.init();
