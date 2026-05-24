@@ -169,7 +169,7 @@ class VXLocalAI {
             const { pipeline, env } = transformers;
             env.allowLocalModels = false;
             // Загрузка легковесной модели ИИ в кэш
-            this.generator = await pipeline('text-generation', 'Xenova/TinyLlama-1.1B-Chat-v1.0');
+            this.generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
             this.isReady = true;
             this.isLoading = false;
             VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН. Введите /ai [запрос] или используйте кнопку.");
