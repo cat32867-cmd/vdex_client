@@ -9,42 +9,12 @@ const VX_KERNEL_REGISTRY = {
         { id: "mod_auth", status: "active", memory: "4kb", version: "v1.5" },
         { id: "mod_render", status: "active", memory: "256kb", version: "v4.2" },
         { id: "mod_audio", status: "standby", memory: "32kb", version: "v1.8" },
-        { id: "mod_video", status: "standby", memory: "64kb", version: "v2.0" },
-        { id: "mod_sensors", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_gps", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_bluetooth", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_nfc", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_usb", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_camera", status: "standby", memory: "16kb", version: "v1.0" },
-        { id: "mod_microphone", status: "standby", memory: "8kb", version: "v1.0" },
-        { id: "mod_speaker", status: "standby", memory: "8kb", version: "v1.0" },
-        { id: "mod_display", status: "active", memory: "512kb", version: "v1.0" },
-        { id: "mod_touch", status: "active", memory: "16kb", version: "v1.0" },
-        { id: "mod_keyboard", status: "active", memory: "16kb", version: "v1.0" },
-        { id: "mod_mouse", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_gamepad", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_joystick", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_vr", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_ar", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_haptics", status: "standby", memory: "4kb", version: "v1.0" },
-        { id: "mod_battery", status: "active", memory: "4kb", version: "v1.0" },
-        { id: "mod_power", status: "active", memory: "4kb", version: "v1.0" },
-        { id: "mod_thermal", status: "active", memory: "4kb", version: "v1.0" },
-        { id: "mod_fan", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_led", status: "standby", memory: "4kb", version: "v1.0" },
-        { id: "mod_vibration", status: "standby", memory: "4kb", version: "v1.0" },
-        { id: "mod_fingerprint", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_faceid", status: "inactive", memory: "0kb", version: "v1.0" },
-        { id: "mod_iris", status: "inactive", memory: "0kb", version: "v1.0" }
+        { id: "mod_ai", status: "active", memory: "900mb", version: "v1.0" }
     ],
     "ERR_CODES": {
         "0x00": "SUCCESS", "0x01": "ERR_NET_DISCONNECT", "0x02": "ERR_AUTH_FAIL",
         "0x03": "ERR_CRYPTO_KEY", "0x04": "ERR_DB_LOCKED", "0x05": "ERR_MEM_FULL",
-        "0x06": "ERR_TIMEOUT", "0x07": "ERR_WEBRTC_ICE", "0x08": "ERR_WEBRTC_SDP",
-        "0x09": "ERR_WS_CLOSE", "0x0A": "ERR_WS_ERROR", "0x0B": "ERR_WS_OPEN",
-        "0x0C": "ERR_WS_MESSAGE", "0x0D": "ERR_JSON_PARSE", "0x0E": "ERR_JSON_STRINGIFY",
-        "0x0F": "ERR_DOM_NOT_FOUND", "0x10": "ERR_DOM_EVENT", "0x11": "ERR_FILE_READ",
-        "0x12": "ERR_FILE_WRITE", "0x13": "ERR_IMG_COMPRESS", "0x14": "ERR_CANVAS_DRAW"
+        "0x06": "ERR_TIMEOUT", "0x07": "ERR_WEBRTC_ICE", "0x08": "ERR_WEBRTC_SDP"
     }
 };
 
@@ -69,31 +39,26 @@ const VXState = {
     },
     network: { socket: null, isConnected: false, isReconnecting: false, peerConnections: {} },
     ui: { activeChannelId: 'GLOBAL', channels: [], unread: {} },
-    crypto: { keyPair: null } 
+    crypto: { keyPair: null }
 };
 
 // ========== МОДУЛЬ УПРАВЛЕНИЯ АККАУНТАМИ ==========
 const VXAccounts = {
     storageKey: 'vx_accounts',
-    
     getAll() {
         const data = localStorage.getItem(this.storageKey);
         return data ? JSON.parse(data) : {};
     },
-    
     saveAll(accounts) {
         localStorage.setItem(this.storageKey, JSON.stringify(accounts));
     },
-    
     async hashPassword(password) {
-        // SHA-256 через WebCrypto API — нельзя обратить в отличие от btoa
         const encoder = new TextEncoder();
         const data = encoder.encode('vx_salt_2024:' + password);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
-
     async verify(nickname, password) {
         const accounts = this.getAll();
         const acc = accounts[nickname];
@@ -101,7 +66,6 @@ const VXAccounts = {
         const hash = await this.hashPassword(password);
         return acc.passwordHash === hash;
     },
-
     async register(nickname, password, uid = null) {
         const accounts = this.getAll();
         if (accounts[nickname]) {
@@ -118,18 +82,15 @@ const VXAccounts = {
         this.saveAll(accounts);
         return { success: true, uid: newUid };
     },
-    
     getUid(nickname) {
         const accounts = this.getAll();
         return accounts[nickname]?.uid || null;
     },
-    
     deleteAccount(nickname) {
         const accounts = this.getAll();
         delete accounts[nickname];
         this.saveAll(accounts);
     },
-    
     updateAvatar(nickname, avatarData) {
         const accounts = this.getAll();
         if (accounts[nickname]) {
@@ -139,7 +100,6 @@ const VXAccounts = {
         }
         return false;
     },
-    
     changeNickname(oldNick, newNick) {
         const accounts = this.getAll();
         if (!accounts[oldNick] || accounts[newNick]) return false;
@@ -150,54 +110,108 @@ const VXAccounts = {
     }
 };
 
-// ==========================================
-// ========== ДОБАВЛЕННЫЙ МОДУЛЬ ИИ ==========
-// ==========================================
+// ========== ИИ-МОДУЛЬ (обновлён) ==========
 class VXLocalAI {
     constructor() {
         this.model = null;
         this.generator = null;
         this.isReady = false;
         this.isLoading = false;
+        this.history = JSON.parse(localStorage.getItem('vx_ai_history') || '[]');
     }
+
     async init() {
         if (this.isReady || this.isLoading) return;
         this.isLoading = true;
-        VXApp.UI.appendSystem("ЗАПУСК ИИ-МОДУЛЯ: Инициализация нейросети...");
+        this.updateStatus('loading');
+
         try {
             const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.0');
             const { pipeline, env } = transformers;
             env.allowLocalModels = false;
-            // Загрузка легковесной модели ИИ в кэш
-            this.generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
+
+            this.generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat', {
+                progress_callback: (progress) => {
+                    if (progress.status === 'progress' && progress.file?.includes('model')) {
+                        console.log(`Загрузка модели: ${Math.round(progress.progress || 0)}%`);
+                    }
+                }
+            });
+
             this.isReady = true;
             this.isLoading = false;
-            VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН. Введите /ai [запрос] или используйте кнопку.");
+            this.updateStatus('ready');
+            VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН. Нажмите 🤖 для диалога.");
         } catch (error) {
-            VXApp.UI.appendSystem(`ОШИБКА ИИ: ${error.message}`);
+            console.error('AI init error:', error);
             this.isLoading = false;
+            this.updateStatus('error');
+            VXApp.UI.appendSystem(`ОШИБКА ИИ: ${error.message}`);
         }
     }
-    async ask(prompt) {
+
+    updateStatus(status) {
+        const statusEl = document.getElementById('ai-status');
+        if (!statusEl) return;
+        statusEl.className = 'ai-status';
+        if (status === 'ready') {
+            statusEl.classList.add('ready');
+            statusEl.textContent = 'ONLINE';
+        } else if (status === 'loading') {
+            statusEl.classList.add('loading');
+            statusEl.textContent = 'ЗАГРУЗКА...';
+        } else if (status === 'error') {
+            statusEl.textContent = 'ERROR';
+        } else {
+            statusEl.textContent = 'OFFLINE';
+        }
+    }
+
+    async ask(prompt, onChunk) {
         if (!this.isReady) {
-            if (!this.isLoading) this.init();
-            return "ИИ-модуль загружается, подождите немного...";
+            if (!this.isLoading) await this.init();
+            return "ИИ-модуль загружается, подождите...";
         }
-        VXApp.UI.appendSystem(`[AI_THINKING]: Обработка...`);
-        const formattedPrompt = `<|system|>\nТы полезный ИИ-ассистент, встроенный в мессенджер Vdex. Отвечай кратко.\n<|user|>\n${prompt}\n<|assistant|>\n`;
+
+        const formattedPrompt = `<|system|>\nТы полезный ИИ-ассистент, встроенный в мессенджер Vdex. Отвечай кратко, по делу. Можешь использовать эмодзи и markdown.\n<|user|>\n${prompt}\n<|assistant|>\n`;
+
         try {
-            const output = await this.generator(formattedPrompt, { max_new_tokens: 150, temperature: 0.7, do_sample: true });
+            const output = await this.generator(formattedPrompt, {
+                max_new_tokens: 300,
+                temperature: 0.7,
+                do_sample: true,
+                top_k: 50
+            });
+
             const fullText = output[0].generated_text;
-            return (fullText.split('<|assistant|>\n')[1] || fullText).trim();
-        } catch (error) { 
-            return `СБОЙ ГЕНЕРАЦИИ: ${error.message}`; 
+            const response = (fullText.split('<|assistant|>\n')[1] || fullText).trim();
+
+            // Сохраняем в историю
+            this.history.push({ role: 'user', content: prompt, time: Date.now() });
+            this.history.push({ role: 'assistant', content: response, time: Date.now() });
+            if (this.history.length > 50) this.history = this.history.slice(-50);
+            localStorage.setItem('vx_ai_history', JSON.stringify(this.history));
+
+            return response;
+        } catch (error) {
+            console.error('AI generation error:', error);
+            return `СБОЙ ГЕНЕРАЦИИ: ${error.message}`;
         }
+    }
+
+    clearHistory() {
+        this.history = [];
+        localStorage.removeItem('vx_ai_history');
+    }
+
+    getHistory() {
+        return this.history;
     }
 }
-// ==========================================
 
 class VXIndexedDB {
     constructor() { this.db = null; }
+
     async init() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(VXConfig.DB_NAME, VXConfig.DB_VERSION);
@@ -216,6 +230,7 @@ class VXIndexedDB {
             request.onerror = (e) => reject(e);
         });
     }
+
     async saveMessage(msg) {
         if(!msg.id) msg.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         if(!msg.timestamp) msg.timestamp = Date.now();
@@ -228,6 +243,7 @@ class VXIndexedDB {
             request.onerror = (e) => reject(e);
         });
     }
+
     async getMessages(channelId, limit = 100) {
         return new Promise((resolve, reject) => {
             if(!this.db) return resolve([]);
@@ -244,6 +260,7 @@ class VXIndexedDB {
             request.onerror = (e) => reject(e);
         });
     }
+
     async clearAll() {
         return new Promise((resolve) => {
             const tx = this.db.transaction(['messages', 'channels'], 'readwrite');
@@ -262,7 +279,7 @@ class VXIndexedDB {
 class VXCrypto {
     static async encrypt(text) { return btoa(unescape(encodeURIComponent(text))); }
     static async decrypt(base64Str) {
-        try { return decodeURIComponent(escape(atob(base64Str))); } 
+        try { return decodeURIComponent(escape(atob(base64Str))); }
         catch(e) { return base64Str; }
     }
 }
@@ -323,17 +340,13 @@ class VXWebRTCManager {
         if (!target) return VXApp.UI.showToast("Введите ID узла", "warn");
         this.targetNode = target;
         VXApp.UI.closeModal('modal-search-user');
-
         const mediaOk = await this.setupLocalMedia();
         if (!mediaOk) return;
-
         document.getElementById('webrtc-container').classList.add('active');
         document.getElementById('remote-video-label').innerText = `ВЫЗОВ: ${target}...`;
-
         this.createPeerConnection();
         const offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
-
         VXApp.Network.transmit({
             type: "call_offer",
             targetUid: this.targetNode,
@@ -360,12 +373,10 @@ class VXWebRTCManager {
         }
         document.getElementById('webrtc-container').classList.add('active');
         document.getElementById('remote-video-label').innerText = `СОЕДИНЕНО С ${this.targetNode}`;
-
         this.createPeerConnection();
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(this.pendingOffer));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
-
         VXApp.Network.transmit({
             type: "call_answer",
             targetUid: this.targetNode,
@@ -422,6 +433,7 @@ class VXSearchManager {
         VXApp.UI.showToast(`Поиск узла ${uid}...`, "info");
         VXApp.Network.transmit({ type: "search_user", targetUid: uid });
     }
+
     handleSearchResult(data) {
         const resultDiv = document.getElementById('search-result');
         const nickEl = document.getElementById('found-user-nick');
@@ -436,6 +448,7 @@ class VXSearchManager {
             VXApp.UI.showToast("Узел не найден", "error");
         }
     }
+
     inviteToCurrent() {
         const target = document.getElementById('search-node-id').value.trim();
         if (!target) return VXApp.UI.showToast("Сначала найдите узел", "warn");
@@ -450,6 +463,197 @@ class VXSearchManager {
     }
 }
 
+// ========== ИИ-ИНТЕРФЕЙС (НОВЫЙ) ==========
+class VXAIInterface {
+    constructor() {
+        this.chatContainer = document.getElementById('ai-chat-container');
+        this.input = document.getElementById('ai-input');
+        this.sendBtn = document.getElementById('btn-send-ai');
+        this.clearBtn = document.getElementById('btn-clear-ai-chat');
+        this.isOpen = false;
+        this.initListeners();
+    }
+
+    initListeners() {
+        this.sendBtn.addEventListener('click', () => this.sendQuery());
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendQuery();
+            }
+        });
+        this.input.addEventListener('input', () => {
+            this.input.style.height = 'auto';
+            this.input.style.height = Math.min(this.input.scrollHeight, 120) + 'px';
+        });
+        this.clearBtn.addEventListener('click', () => this.clearChat());
+
+        document.querySelectorAll('.ai-prompt-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const prompt = chip.dataset.prompt;
+                this.input.value = prompt;
+                this.input.style.height = 'auto';
+                this.input.style.height = Math.min(this.input.scrollHeight, 120) + 'px';
+                this.sendQuery();
+            });
+        });
+    }
+
+    async open() {
+        VXApp.UI.openModal('modal-ai');
+        this.isOpen = true;
+        this.renderHistory();
+
+        if (!VXApp.AI.isReady && !VXApp.AI.isLoading) {
+            await VXApp.AI.init();
+        }
+
+        setTimeout(() => this.input.focus(), 300);
+    }
+
+    close() {
+        VXApp.UI.closeModal('modal-ai');
+        this.isOpen = false;
+    }
+
+    renderHistory() {
+        const history = VXApp.AI.getHistory();
+        const welcome = this.chatContainer.querySelector('.ai-welcome');
+
+        if (history.length === 0) {
+            if (!welcome) {
+                this.chatContainer.innerHTML = `
+                    <div class="ai-welcome">
+                        <div class="ai-welcome-icon">🤖</div>
+                        <h3>VX Neural Core v1.0</h3>
+                        <p>Локальная нейросеть Qwen1.5-0.5B. Работает прямо в браузере без отправки данных на сервер.</p>
+                        <div class="ai-quick-prompts">
+                            <button class="ai-prompt-chip" data-prompt="Объясни, как работает WebRTC">💡 Как работает WebRTC?</button>
+                            <button class="ai-prompt-chip" data-prompt="Напиши простой шифр на JS">🔐 Простой шифр</button>
+                            <button class="ai-prompt-chip" data-prompt="Помоги оптимизировать JavaScript код">⚡ Оптимизация JS</button>
+                            <button class="ai-prompt-chip" data-prompt="Расскажи про end-to-end шифрование">🛡️ E2E шифрование</button>
+                        </div>
+                    </div>
+                `;
+                this.initPromptListeners();
+            }
+            return;
+        }
+
+        if (welcome) welcome.remove();
+
+        this.chatContainer.innerHTML = '';
+        history.forEach(msg => {
+            this.appendMessage(msg.role, msg.content, false);
+        });
+
+        this.scrollToBottom();
+    }
+
+    initPromptListeners() {
+        document.querySelectorAll('.ai-prompt-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const prompt = chip.dataset.prompt;
+                this.input.value = prompt;
+                this.sendQuery();
+            });
+        });
+    }
+
+    appendMessage(role, content, animate = true) {
+        const welcome = this.chatContainer.querySelector('.ai-welcome');
+        if (welcome) welcome.remove();
+
+        const msgEl = document.createElement('div');
+        msgEl.className = `ai-message ${role}`;
+        if (!animate) msgEl.style.animation = 'none';
+
+        const avatar = role === 'user' ? '👤' : '🤖';
+        const formatted = this.formatMessage(content);
+
+        msgEl.innerHTML = `
+            <div class="ai-avatar">${avatar}</div>
+            <div class="ai-bubble">${formatted}</div>
+        `;
+
+        this.chatContainer.appendChild(msgEl);
+        if (animate) this.scrollToBottom();
+    }
+
+    formatMessage(text) {
+        // Базовое форматирование markdown
+        let formatted = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/_(.+?)_/g, '<em>$1</em>');
+        return formatted;
+    }
+
+    showThinking() {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'ai-message assistant';
+        msgEl.id = 'ai-thinking';
+        msgEl.innerHTML = `
+            <div class="ai-avatar">🤖</div>
+            <div class="ai-bubble">
+                <div class="ai-thinking">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        this.chatContainer.appendChild(msgEl);
+        this.scrollToBottom();
+    }
+
+    removeThinking() {
+        const thinking = document.getElementById('ai-thinking');
+        if (thinking) thinking.remove();
+    }
+
+    async sendQuery() {
+        const query = this.input.value.trim();
+        if (!query) return;
+
+        this.input.value = '';
+        this.input.style.height = 'auto';
+
+        this.appendMessage('user', query);
+        this.showThinking();
+
+        this.sendBtn.disabled = true;
+
+        try {
+            const response = await VXApp.AI.ask(query);
+            this.removeThinking();
+            this.appendMessage('assistant', response);
+        } catch (error) {
+            this.removeThinking();
+            this.appendMessage('assistant', `Ошибка: ${error.message}`);
+        } finally {
+            this.sendBtn.disabled = false;
+            this.input.focus();
+        }
+    }
+
+    clearChat() {
+        if (!confirm('Очистить историю диалога с ИИ?')) return;
+        VXApp.AI.clearHistory();
+        this.renderHistory();
+        VXApp.UI.showToast('История очищена', 'info');
+    }
+
+    scrollToBottom() {
+        requestAnimationFrame(() => {
+            this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+        });
+    }
+}
+
 class VXInterface {
     constructor() {
         this.els = {
@@ -458,7 +662,8 @@ class VXInterface {
             btnSend: document.getElementById('btn-send-msg'),
             chList: document.getElementById('channel-list-container'),
             ctxMenu: document.getElementById('context-menu'),
-            chCtxMenu: document.getElementById('channel-context-menu')
+            chCtxMenu: document.getElementById('channel-context-menu'),
+            inputWrapper: document.getElementById('input-wrapper')
         };
         this.ctxTargetMsgId = null;
         this.ctxTargetChannelId = null;
@@ -474,14 +679,12 @@ class VXInterface {
     initVoiceRecorder() {
         const voiceBtn = document.getElementById('btn-voice-record');
         if (!voiceBtn) return;
-
         voiceBtn.addEventListener('click', async () => {
             if (!this.isRecording) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     this.mediaRecorder = new MediaRecorder(stream);
                     this.audioChunks = [];
-
                     this.mediaRecorder.ondataavailable = e => this.audioChunks.push(e.data);
                     this.mediaRecorder.onstop = () => {
                         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
@@ -489,7 +692,6 @@ class VXInterface {
                         stream.getTracks().forEach(t => t.stop());
                         voiceBtn.classList.remove('recording');
                     };
-
                     this.mediaRecorder.start();
                     this.isRecording = true;
                     voiceBtn.classList.add('recording');
@@ -517,7 +719,6 @@ class VXInterface {
                 const base64 = reader.result.split(',')[1];
                 const currentChannel = VXState.ui.channels.find(c => c.id === VXState.ui.activeChannelId);
                 const isPrivate = currentChannel?.isPrivate || false;
-
                 const msgData = {
                     id: Date.now().toString(),
                     type: isPrivate ? "private_message" : "voice_message",
@@ -529,11 +730,7 @@ class VXInterface {
                     time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
                     timestamp: Date.now()
                 };
-
-                if (isPrivate) {
-                    msgData.targetUid = currentChannel.targetUid;
-                }
-
+                if (isPrivate) msgData.targetUid = currentChannel.targetUid;
                 VXApp.Network.transmit(msgData);
                 this.renderMessageHTML(msgData, false);
             } catch (e) {
@@ -551,33 +748,65 @@ class VXInterface {
     }
 
     initListeners() {
+        // Фокус-эффект для инпута
+        this.els.input.addEventListener('focus', () => {
+            this.els.inputWrapper.classList.add('focused');
+            if (window.innerWidth <= 850 && document.body.classList.contains('menu-open')) {
+                this.toggleMobileMenu();
+            }
+        });
+        this.els.input.addEventListener('blur', () => {
+            this.els.inputWrapper.classList.remove('focused');
+        });
+
         this.els.input.addEventListener('input', () => {
             this.els.input.style.height = '40px';
             this.els.input.style.height = (this.els.input.scrollHeight) + 'px';
             if (this.els.input.value.trim().length > 0) this.els.btnSend.classList.add('active');
             else this.els.btnSend.classList.remove('active');
         });
+
         this.els.input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleCommandOrMessage(); }
         });
+
         this.els.btnSend.addEventListener('click', () => this.handleCommandOrMessage());
+
         document.getElementById('btn-upload-file').addEventListener('click', () => document.getElementById('hidden-file-input').click());
         document.getElementById('hidden-file-input').addEventListener('change', (e) => VXApp.Media.handle(e));
+
         document.getElementById('btn-settings').addEventListener('click', () => {
             document.getElementById('settings-uid').value = VXState.user.uid;
             document.getElementById('settings-theme').value = VXState.user.theme;
             this.openModal('modal-settings');
         });
-        document.getElementById('btn-logout').addEventListener('click', () => { 
+
+        document.getElementById('btn-clear-db').addEventListener('click', () => VXApp.Database.clearAll());
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
             localStorage.removeItem('vx_nick');
             localStorage.removeItem('vx_uuid');
             localStorage.removeItem('vx_avatar');
             localStorage.removeItem('vx_pass_hash');
             delete VXState._pendingHash;
-            location.reload(); 
+            location.reload();
         });
+
         document.getElementById('btn-search-user').addEventListener('click', () => this.openModal('modal-search-user'));
         document.getElementById('btn-global-call').addEventListener('click', () => this.openModal('modal-search-user'));
+        document.getElementById('btn-execute-search').addEventListener('click', () => VXApp.SearchManager.executeSearch());
+        document.getElementById('btn-start-call').addEventListener('click', () => VXApp.WebRTC.initiateCall());
+        document.getElementById('btn-invite-to-channel').addEventListener('click', () => VXApp.SearchManager.inviteToCurrent());
+
+        // === КНОПКА ОТКРЫТИЯ ИИ ===
+        document.getElementById('btn-call-ai').addEventListener('click', () => {
+            if (VXApp.AIInterface) {
+                VXApp.AIInterface.open();
+            }
+        });
+
+        document.getElementById('btn-create-group').addEventListener('click', () => this.openModal('modal-create-group'));
+
         document.getElementById('btn-confirm-create').addEventListener('click', () => {
             const n = document.getElementById('new-group-name').value.trim().toUpperCase().replace(/\s+/g, '_');
             const d = document.getElementById('new-group-desc').value.trim();
@@ -592,14 +821,21 @@ class VXInterface {
                 this.showToast("Имя группы слишком короткое", "error");
             }
         });
+
+        document.getElementById('btn-toggle-rp').addEventListener('click', () => this.toggleRightPanel());
+        document.getElementById('btn-close-rp').addEventListener('click', () => this.toggleRightPanel());
+        document.getElementById('btn-menu-toggle').addEventListener('click', () => this.toggleMobileMenu());
+        document.getElementById('mobile-overlay').addEventListener('click', () => this.closeAllSidebars());
+
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('#context-menu')) {
+            if (!e.target.closest('#context-menu') && !e.target.closest('.msg-wrapper')) {
                 this.els.ctxMenu.style.display = 'none';
             }
-            if (!e.target.closest('#channel-context-menu')) {
+            if (!e.target.closest('#channel-context-menu') && !e.target.closest('.channel-wrapper')) {
                 this.els.chCtxMenu.style.display = 'none';
             }
         });
+
         let micOn = true, camOn = true;
         document.getElementById('btn-toggle-mic').addEventListener('click', (e) => {
             const btn = e.currentTarget;
@@ -608,6 +844,7 @@ class VXInterface {
             VXApp.WebRTC.localStream.getAudioTracks().forEach(t => t.enabled = micOn);
             btn.classList.toggle('muted', !micOn);
         });
+
         document.getElementById('btn-toggle-cam').addEventListener('click', (e) => {
             const btn = e.currentTarget;
             if(!VXApp.WebRTC.localStream) return;
@@ -615,6 +852,10 @@ class VXInterface {
             VXApp.WebRTC.localStream.getVideoTracks().forEach(t => t.enabled = camOn);
             btn.classList.toggle('muted', !camOn);
         });
+
+        document.getElementById('btn-end-call').addEventListener('click', () => VXApp.WebRTC.endCall());
+        document.getElementById('btn-accept-call').addEventListener('click', () => VXApp.WebRTC.acceptCall());
+        document.getElementById('btn-reject-call').addEventListener('click', () => VXApp.WebRTC.rejectCall());
 
         document.getElementById('btn-profile').addEventListener('click', () => {
             const nickInput = document.getElementById('profile-nick');
@@ -629,9 +870,11 @@ class VXInterface {
             }
             this.openModal('modal-profile');
         });
+
         document.getElementById('btn-change-avatar').addEventListener('click', () => {
             document.getElementById('profile-avatar-input').click();
         });
+
         document.getElementById('profile-avatar-input').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file && file.type.startsWith('image/')) {
@@ -645,13 +888,13 @@ class VXInterface {
                 reader.readAsDataURL(file);
             }
         });
+
         document.getElementById('btn-save-profile').addEventListener('click', () => {
             const newNick = document.getElementById('profile-nick').value.trim();
             const oldNick = VXState.user.nickname;
             if (newNick.length >= 2) {
                 VXState.user.nickname = newNick;
                 localStorage.setItem('vx_nick', newNick);
-                
                 if (oldNick !== newNick) {
                     VXAccounts.changeNickname(oldNick, newNick);
                 }
@@ -706,11 +949,13 @@ class VXInterface {
             this.els.chCtxMenu.style.display = 'none';
         });
 
+        // Свайп для мобильных
         let touchStartX = 0, touchStartY = 0;
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
         }, { passive: true });
+
         document.addEventListener('touchend', (e) => {
             if (window.innerWidth > 850) return;
             if (document.body.classList.contains('menu-open')) return;
@@ -723,12 +968,6 @@ class VXInterface {
             }
         }, { passive: true });
 
-        this.els.input.addEventListener('focus', () => {
-            if (window.innerWidth <= 850 && document.body.classList.contains('menu-open')) {
-                this.toggleMobileMenu();
-            }
-        });
-
         const donateBtn = document.getElementById('btn-donate');
         if (donateBtn) {
             donateBtn.addEventListener('click', () => {
@@ -736,23 +975,7 @@ class VXInterface {
             });
         }
 
-        // ===== ДОБАВЛЕН ОБРАБОТЧИК ДЛЯ КНОПКИ AI =====
-        const aiBtn = document.getElementById('btn-call-ai');
-        if (aiBtn) {
-            aiBtn.addEventListener('click', () => {
-                const txt = this.els.input.value.trim();
-                if (!txt) {
-                    this.showToast("Введите текст запроса для ИИ в поле ввода", "warn");
-                    return;
-                }
-                // Имитируем ввод команды /ai, чтобы код прошел через основной обработчик
-                this.els.input.value = '/ai ' + txt;
-                this.handleCommandOrMessage();
-            });
-        }
-        // =============================================
-
-        // ===== ОБРАБОТЧИКИ АУТЕНТИФИКАЦИИ =====
+        // === АУТЕНТИФИКАЦИЯ ===
         const modeLoginBtn = document.getElementById('auth-mode-login');
         const modeRegBtn = document.getElementById('auth-mode-register');
         const authTitle = document.getElementById('auth-mode-title');
@@ -764,6 +987,8 @@ class VXInterface {
             this.authMode = 'login';
             modeLoginBtn.classList.add('active');
             modeRegBtn.classList.remove('active');
+            modeLoginBtn.setAttribute('aria-selected', 'true');
+            modeRegBtn.setAttribute('aria-selected', 'false');
             authTitle.innerText = 'ИДЕНТИФИКАЦИЯ УЗЛА';
             submitBtn.innerText = 'ВОЙТИ';
         });
@@ -772,6 +997,8 @@ class VXInterface {
             this.authMode = 'register';
             modeRegBtn.classList.add('active');
             modeLoginBtn.classList.remove('active');
+            modeRegBtn.setAttribute('aria-selected', 'true');
+            modeLoginBtn.setAttribute('aria-selected', 'false');
             authTitle.innerText = 'РЕГИСТРАЦИЯ НОВОГО УЗЛА';
             submitBtn.innerText = 'СОЗДАТЬ';
         });
@@ -779,7 +1006,6 @@ class VXInterface {
         const handleAuth = async () => {
             const nick = nickInput.value.trim();
             const pass = passInput.value;
-            
             if (nick.length < 2) {
                 this.showToast("Позывной слишком короткий", "error");
                 return;
@@ -788,7 +1014,6 @@ class VXInterface {
                 this.showToast("Пароль должен быть не менее 4 символов", "error");
                 return;
             }
-            
             if (this.authMode === 'register') {
                 const result = await VXAccounts.register(nick, pass);
                 if (result.success) {
@@ -806,17 +1031,12 @@ class VXInterface {
                     this.showToast(result.error, "error");
                 }
             } else {
-                // Доверяем серверу аутентификацию на новом устройстве (локальной БД еще нет)
                 const hash = await VXAccounts.hashPassword(pass);
                 const uid = VXAccounts.getUid(nick) || ('node_' + Math.random().toString(36).substr(2, 9));
-                
                 VXState.user.nickname = nick;
                 VXState.user.uid = uid;
-                
-                // Временно сохраняем хэш, чтобы потом записать в localStorage при успешном ответе
                 VXState._pendingHash = hash;
                 VXState._pendingAuthType = 'login';
-                
                 this.showToast("Отправка запроса на сервер...", "info");
                 VXApp.startSequence();
             }
@@ -824,19 +1044,12 @@ class VXInterface {
 
         submitBtn.addEventListener('click', handleAuth);
         passInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAuth();
-            }
+            if (e.key === 'Enter') { e.preventDefault(); handleAuth(); }
         });
         nickInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                passInput.focus();
-            }
+            if (e.key === 'Enter') { e.preventDefault(); passInput.focus(); }
         });
 
-        // Запрос разрешения на уведомления (безопасно для сред без Notification)
         if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
             Notification.requestPermission();
         }
@@ -868,6 +1081,7 @@ class VXInterface {
         document.body.setAttribute('data-theme', themeName);
         localStorage.setItem('vx_theme', themeName);
         VXState.user.theme = themeName;
+        document.getElementById('settings-theme').value = themeName;
     }
 
     renderChannels() {
@@ -876,13 +1090,17 @@ class VXInterface {
             const wrapper = document.createElement('div');
             wrapper.className = 'channel-wrapper';
             wrapper.dataset.channelId = ch.id;
-            
             wrapper.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.ctxTargetChannelId = ch.id;
                 this.els.chCtxMenu.style.display = 'flex';
-                this.els.chCtxMenu.style.left = `${e.pageX}px`;
-                this.els.chCtxMenu.style.top = `${e.pageY}px`;
+                // Позиционирование с учётом границ экрана
+                const menuW = 180, menuH = 50;
+                let x = e.pageX, y = e.pageY;
+                if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 10;
+                if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 10;
+                this.els.chCtxMenu.style.left = `${x}px`;
+                this.els.chCtxMenu.style.top = `${y}px`;
             });
 
             let pressTimer;
@@ -943,7 +1161,7 @@ class VXInterface {
 
     async switchChannel(id) {
         VXState.ui.activeChannelId = id;
-        VXState.ui.unread[id] = 0; 
+        VXState.ui.unread[id] = 0;
         const ch = VXState.ui.channels.find(c => c.id === id) || { name: id, desc: 'Unknown' };
         document.getElementById('current-ch-name').innerText = ch.name;
         document.getElementById('current-ch-desc').innerText = ch.desc;
@@ -978,12 +1196,11 @@ class VXInterface {
         const isMine = data.uid === VXState.user.uid;
         const timeStr = data.time || new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         let decryptedText = data.text;
-        if(data.isEncrypted) { 
-            decryptedText = await VXCrypto.decrypt(data.text); 
+        if(data.isEncrypted) {
+            decryptedText = await VXCrypto.decrypt(data.text);
         } else if (data.text) {
             decryptedText = data.text;
         }
-
         const wrap = document.createElement('div');
         wrap.className = `msg-wrapper ${isMine ? 'mine' : ''}`;
         wrap.id = `msg-${data.id || Date.now()}`;
@@ -991,19 +1208,26 @@ class VXInterface {
             e.preventDefault();
             this.ctxTargetMsgId = wrap.id;
             this.els.ctxMenu.style.display = 'flex';
-            this.els.ctxMenu.style.left = `${e.pageX}px`;
-            this.els.ctxMenu.style.top = `${e.pageY}px`;
+            const menuW = 180, menuH = 120;
+            let x = e.pageX, y = e.pageY;
+            if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 10;
+            if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 10;
+            this.els.ctxMenu.style.left = `${x}px`;
+            this.els.ctxMenu.style.top = `${y}px`;
         });
+
         let mediaHtml = '';
         if (data.image) {
-            mediaHtml = `<img src="${data.image}" class="msg-image" onclick="VXApp.UI.viewImage(this.src)">`;
+            mediaHtml = `<img src="${data.image}" class="msg-image" onclick="VXApp.UI.viewImage(this.src)" alt="Прикреплённое изображение">`;
         } else if (data.audio) {
             const audioUrl = `data:${data.mimeType || 'audio/webm'};base64,${data.audio}`;
             mediaHtml = `<audio class="msg-audio" controls src="${audioUrl}"></audio>`;
         }
+
         let safeText = decryptedText ? decryptedText.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
-        safeText = safeText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:var(--vx-info);text-decoration:none;">$1</a>');
+        safeText = safeText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--vx-info);text-decoration:none;">$1</a>');
         const lockIcon = data.isEncrypted ? `<span class="e2ee-lock" title="Шифрование AES">🔒</span>` : '';
+
         wrap.innerHTML = `
             <div class="msg-meta">
                 ${lockIcon}
@@ -1030,10 +1254,8 @@ class VXInterface {
         const txt = this.els.input.value.trim();
         if (!txt) return;
 
-        // ===== ДОБАВЛЕНА ОБРАБОТКА КОМАНДЫ /AI =====
         if (txt.startsWith('/')) {
             const cmd = txt.split(' ')[0].toLowerCase();
-            
             if (cmd === '/clear') {
                 this.els.flow.innerHTML = '';
                 this.appendSystem('UI_CACHE_CLEARED');
@@ -1042,50 +1264,33 @@ class VXInterface {
                 if(parts[1]) this.setTheme(parts[1]);
                 else this.appendSystem('Доступно: /theme dark | crimson | ocean');
             } else if (cmd === '/help') {
-                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /ai [запрос], /help');
+                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /help');
             } else if (cmd === '/ai') {
-                const prompt = txt.substring(4).trim(); // убираем '/ai ' из строки
-                if (!prompt) {
-                    this.appendSystem('Использование: /ai [ваш вопрос]');
-                    return;
+                // Открываем ИИ-окно вместо отправки в чат
+                const prompt = txt.substring(4).trim();
+                if (VXApp.AIInterface) {
+                    VXApp.AIInterface.open();
+                    if (prompt) {
+                        setTimeout(() => {
+                            document.getElementById('ai-input').value = prompt;
+                            VXApp.AIInterface.sendQuery();
+                        }, 500);
+                    }
                 }
-                this.els.input.value = ''; 
-                this.els.input.style.height = '40px';
-                this.els.btnSend.classList.remove('active');
-                
-                VXApp.AI.ask(prompt).then(aiResponse => {
-                    const msgData = {
-                        id: Date.now().toString(),
-                        type: "chat",
-                        uid: "vx_ai_core",
-                        nickname: "VX_AI",
-                        text: `[ЗАПРОС]: ${prompt}\n[ОТВЕТ]: ${aiResponse}`,
-                        isEncrypted: false,
-                        faction: VXState.ui.activeChannelId,
-                        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                        timestamp: Date.now()
-                    };
-                    VXApp.Network.transmit(msgData); // Кидаем в общую сеть
-                    this.renderMessageHTML(msgData, false);
-                });
-                return;
             } else {
                 this.appendSystem(`UNKNOWN COMMAND: ${cmd}`);
             }
-            this.els.input.value = ''; 
+            this.els.input.value = '';
             this.els.input.style.height = '40px';
             this.els.btnSend.classList.remove('active');
             return;
         }
-        // ===========================================
-        
+
         this.isSending = true;
         this.els.btnSend.classList.remove('active');
-        
         try {
             const currentChannel = VXState.ui.channels.find(c => c.id === VXState.ui.activeChannelId);
             const isPrivate = currentChannel?.isPrivate || false;
-
             const msgData = {
                 id: Date.now().toString(),
                 type: isPrivate ? "private_message" : "chat",
@@ -1097,14 +1302,10 @@ class VXInterface {
                 time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
                 timestamp: Date.now()
             };
-
-            if (isPrivate) {
-                msgData.targetUid = currentChannel.targetUid;
-            }
-
+            if (isPrivate) msgData.targetUid = currentChannel.targetUid;
             VXApp.Network.transmit(msgData);
             await this.renderMessageHTML(msgData, false);
-            this.els.input.value = ''; 
+            this.els.input.value = '';
             this.els.input.style.height = '40px';
         } catch (e) {
             console.error('Send error:', e);
@@ -1115,8 +1316,10 @@ class VXInterface {
         }
     }
 
-    scrollToBottom() { setTimeout(() => { this.els.flow.scrollTop = this.els.flow.scrollHeight; }, 50); }
-    
+    scrollToBottom() {
+        setTimeout(() => { this.els.flow.scrollTop = this.els.flow.scrollHeight; }, 50);
+    }
+
     toggleMobileMenu() {
         if (document.body.classList.contains('menu-open')) {
             document.body.classList.remove('menu-open');
@@ -1130,6 +1333,7 @@ class VXInterface {
             if (window.innerWidth <= 850) document.getElementById('mobile-overlay').style.display = 'block';
         }
     }
+
     toggleRightPanel() {
         const rightPanel = document.getElementById('right-panel');
         if (document.body.classList.contains('rp-open')) {
@@ -1144,6 +1348,7 @@ class VXInterface {
             rightPanel.classList.add('open');
         }
     }
+
     closeAllSidebars(event) {
         if (event) event.preventDefault();
         document.body.classList.remove('menu-open', 'rp-open');
@@ -1151,7 +1356,7 @@ class VXInterface {
         if (rightPanel) rightPanel.classList.remove('open');
         if (window.innerWidth <= 850) document.getElementById('mobile-overlay').style.display = 'none';
     }
-    
+
     updateMembersList(members) {
         const container = document.getElementById('rp-members-list');
         const countSpan = document.getElementById('rp-member-count');
@@ -1179,7 +1384,6 @@ class VXInterface {
                 info.innerHTML = `<div class="member-name">${m.nickname || m.uid}</div><div class="member-role">${m.role || 'участник'}</div>`;
                 div.appendChild(avatar);
                 div.appendChild(info);
-
                 const dmBtn = document.createElement('button');
                 dmBtn.className = 'btn-modal btn-cancel';
                 dmBtn.style.marginLeft = 'auto';
@@ -1191,7 +1395,6 @@ class VXInterface {
                     this.openPrivateChat(m.uid, m.nickname);
                 };
                 div.appendChild(dmBtn);
-
                 container.appendChild(div);
             });
         } else {
@@ -1199,27 +1402,29 @@ class VXInterface {
             container.innerHTML = '<div style="color:#666; text-align:center;">Нет активных узлов</div>';
         }
     }
-    
+
     setNetworkStatus(isOnline) {
         const dot = document.getElementById('status-indicator');
         const ping = document.getElementById('ping-dot');
-        if (!dot || !ping) return;
-        if (isOnline) {
-            dot.className = 'online-dot';
-            ping.className = 'srv-ping connected';
-        } else {
-            dot.className = 'online-dot offline';
-            ping.className = 'srv-ping';
+        const statusText = document.getElementById('server-status-text');
+        if (ping) {
+            ping.className = isOnline ? 'srv-ping connected' : 'srv-ping';
+        }
+        if (dot) {
+            dot.className = isOnline ? 'online-dot' : 'online-dot offline';
+        }
+        if (statusText) {
+            statusText.innerText = isOnline ? 'В СЕТИ' : 'ОБРЫВ СВЯЗИ';
         }
     }
-    
+
     openModal(id) { document.getElementById(id).classList.add('active'); }
     closeModal(id) { document.getElementById(id).classList.remove('active'); }
     viewImage(src) { document.getElementById('full-image').src = src; this.openModal('image-viewer'); }
-    
+
     showToast(msg, type = 'info') {
         const c = document.getElementById('toast-container'), t = document.createElement('div');
-        t.className = `toast ${type}`; 
+        t.className = `toast ${type}`;
         let icon = '';
         if(type==='info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
         if(type==='error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
@@ -1287,28 +1492,23 @@ class VXNetwork {
         } catch(err) {
             this.handleDisconnect(); return;
         }
-
         VXState.network.socket.onopen = () => {
             VXState.network.isConnected = true;
             setTimeout(() => VXApp.UI.setNetworkStatus(true), 10);
             VXApp.UI.showToast("Связь установлена", "info");
             VXApp.UI.appendSystem("HANDSHAKE УСПЕШЕН.");
-            
-            // Берём хеш и тип авторизации сохранённые при входе/регистрации
             const passwordHash = VXState._pendingHash || localStorage.getItem('vx_pass_hash');
             const authType = VXState._pendingAuthType || 'login';
             delete VXState._pendingHash;
             delete VXState._pendingAuthType;
-
-            this.transmit({ 
-                type: authType, 
-                uid: VXState.user.uid, 
+            this.transmit({
+                type: authType,
+                uid: VXState.user.uid,
                 nickname: VXState.user.nickname,
                 avatar: VXState.user.avatar,
                 password: passwordHash
             });
         };
-
         VXState.network.socket.onmessage = (e) => {
             try {
                 const data = JSON.parse(e.data);
@@ -1323,11 +1523,9 @@ class VXNetwork {
                     VXApp.WebRTC.handleRemoteHangup();
                 } else if (data.type === "webrtc_ice" && data.targetUid === VXState.user.uid && VXApp.WebRTC.peerConnection) {
                     VXApp.WebRTC.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                }
-                else if (data.type === "search_result") {
+                } else if (data.type === "search_result") {
                     VXApp.SearchManager.handleSearchResult(data);
-                }
-                else if (data.type === "invite_to_channel") {
+                } else if (data.type === "invite_to_channel") {
                     const channelId = data.channelId;
                     const fromNick = data.fromNick || 'Узел';
                     VXApp.UI.showToast(`${fromNick} приглашает вас в канал #${channelId}`, "info");
@@ -1336,13 +1534,11 @@ class VXNetwork {
                         localStorage.setItem('vx_channels', JSON.stringify(VXState.ui.channels.filter(c => !c.isDefault)));
                         VXApp.UI.renderChannels();
                     }
-                }
-                else if (data.type === "chat" || data.type === "voice_message") {
+                } else if (data.type === "chat" || data.type === "voice_message") {
                     if (document.getElementById(`msg-${data.id}`)) return;
                     if(!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     VXApp.UI.renderMessageHTML(data, false);
-                }
-                else if (data.type === "private_message") {
+                } else if (data.type === "private_message") {
                     if (document.getElementById(`msg-${data.id}`)) return;
                     const senderUid = data.senderUid || data.uid;
                     const privateChannelId = `private_${senderUid}`;
@@ -1361,29 +1557,21 @@ class VXNetwork {
                     data.faction = privateChannelId;
                     if(!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     VXApp.UI.renderMessageHTML(data, false);
-                }
-                else if (data.type === "auth_error") {
-                    // Явный тип для ошибок авторизации — не надо парсить текст
+                } else if (data.type === "auth_error") {
                     VXApp.UI.appendSystem(`[AUTH ERROR] ${data.text}`);
                     VXApp.UI.showToast(data.text, "error");
                     VXApp.UI.openModal('modal-auth');
                     localStorage.removeItem('vx_nick');
                     localStorage.removeItem('vx_uuid');
                     localStorage.removeItem('vx_pass_hash');
-                }
-                else if (data.type === "login_success") {
+                } else if (data.type === "login_success") {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
-                    
-                    // --- СИНХРОНИЗАЦИЯ УСТРОЙСТВ: Сохраняем правильный UID от сервера ---
                     VXState.user.uid = data.uid;
                     VXState.user.nickname = data.nickname;
                     if (data.avatar) VXState.user.avatar = data.avatar;
-                    
                     localStorage.setItem('vx_uuid', data.uid);
                     localStorage.setItem('vx_nick', data.nickname);
                     if (data.avatar) localStorage.setItem('vx_avatar', data.avatar);
-                    
-                    // Восстанавливаем локальную базу VXAccounts для этого устройства
                     const accounts = VXAccounts.getAll();
                     accounts[data.nickname] = {
                         passwordHash: VXState._pendingHash || localStorage.getItem('vx_pass_hash'),
@@ -1392,26 +1580,19 @@ class VXNetwork {
                         createdAt: Date.now()
                     };
                     VXAccounts.saveAll(accounts);
-                    
-                    // Обновляем UI с правильным UID
                     const nodeIdDisplay = document.getElementById('node-id-display');
                     if (nodeIdDisplay) nodeIdDisplay.innerText = data.uid.toUpperCase();
-                }
-                else if (data.type === "system") {
+                } else if (data.type === "system") {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
                 } else if (data.type === "members_list") {
                     VXApp.UI.updateMembersList(data.members);
                 } else if (data.type === "profile_updated") {
                     VXApp.UI.showToast("Профиль обновлён", "info");
                 }
-                else {
-                    console.log("Неизвестный тип сообщения:", data.type);
-                }
             } catch (err) {
                 VXApp.UI.appendSystem(`SERVER: ${e.data}`);
             }
         };
-
         VXState.network.socket.onclose = () => this.handleDisconnect();
         VXState.network.socket.onerror = () => this.handleDisconnect();
     }
@@ -1451,7 +1632,7 @@ class VXCanvasBG {
     init() { this.resize(); window.addEventListener('resize', () => this.resize()); this.loop(); }
     resize() {
         this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight;
-        this.columns = this.canvas.width / this.fontSize; this.drops = [];
+        this.columns = Math.floor(this.canvas.width / this.fontSize); this.drops = [];
         for(let x = 0; x < this.columns; x++) this.drops[x] = 1;
     }
     draw() {
@@ -1473,21 +1654,22 @@ class VXCanvasBG {
 const VXApp = {
     Database: new VXIndexedDB(),
     UI: null,
+    AIInterface: null,
     Media: new VXMedia(),
     Network: new VXNetwork(),
     WebRTC: new VXWebRTCManager(),
     SearchManager: new VXSearchManager(),
-    AI: new VXLocalAI(), // ===== ДОБАВЛЕНА ИНИЦИАЛИЗАЦИЯ ИИ =====
+    AI: new VXLocalAI(),
     Effects: null,
     async init() {
         await this.Database.init();
         this.UI = new VXInterface();
+        this.AIInterface = new VXAIInterface();
         this.Effects = new VXCanvasBG();
 
         const savedNick = localStorage.getItem('vx_nick');
         const savedUid = localStorage.getItem('vx_uuid');
         const savedPassHash = localStorage.getItem('vx_pass_hash');
-
         if (savedNick && savedUid && savedPassHash) {
             const accounts = VXAccounts.getAll();
             if (accounts[savedNick] && accounts[savedNick].uid === savedUid) {
@@ -1517,15 +1699,3 @@ const VXApp = {
 };
 
 window.addEventListener('DOMContentLoaded', () => VXApp.init());
-
-const VX_LOCALE_PACK = {
-    "RU": { "connect": "Подключение", "error": "Ошибка", "send": "Отправить", "settings": "Настройки" },
-    "EN": { "connect": "Connecting", "error": "Error", "send": "Send", "settings": "Settings" },
-    "CN": { "connect": "连接", "error": "错误", "send": "发送", "settings": "设置" }
-};
-const VX_HARDWARE_MOCK = {
-    "cpu": "ARM_V8_MOCK", "ram": "4096MB", "gpu": "MALI_G_MOCK", "battery": "4500mAh",
-    "sensors": ["accel", "gyro", "prox", "light", "mag", "baro"],
-    "network": ["wifi", "cellular", "bluetooth", "nfc"],
-    "cameras": ["rear_main", "rear_wide", "front"]
-};
