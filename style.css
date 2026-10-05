@@ -736,3 +736,23 @@ select.form-input {
         transition-duration: 0.01ms !important;
     }
 }
+/* ===== ОТВЕТЫ И РЕАКЦИИ ===== */
+#reply-bar { display: none; align-items: center; gap: 10px; background: #0d0d0d; border: 1px solid #222; border-left: 3px solid var(--vx-info); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+#reply-bar.active { display: flex; }
+.reply-bar-text { flex: 1; overflow: hidden; }
+.reply-bar-nick { font-size: 12px; font-weight: bold; color: var(--vx-info); }
+.reply-bar-preview { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-bar-close { background: none; border: none; color: #666; font-size: 16px; cursor: pointer; padding: 4px; }
+.reply-bar-close:hover { color: var(--vx-danger); }
+.reply-quote { border-left: 3px solid var(--vx-info); background: rgba(0,217,255,.08); border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
+.reply-quote-nick { font-size: 11px; font-weight: bold; color: var(--vx-info); }
+.reply-quote-text { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.msg-reactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.reaction-chip { display: flex; align-items: center; gap: 4px; background: #151515; border: 1px solid #2a2a2a; border-radius: 12px; padding: 2px 8px; font-size: 12px; cursor: pointer; transition: .2s; }
+.reaction-chip:hover { border-color: var(--vx-primary); transform: scale(1.05); }
+.reaction-chip.mine { border-color: var(--vx-primary); background: var(--vx-primary-dim); }
+.reaction-count { font-family: var(--font-mono); font-size: 11px; color: #aaa; }
+#reaction-picker { position: fixed; z-index: 9999; display: none; gap: 6px; background: var(--panel-mid); border: 1px solid #333; border-radius: 24px; padding: 6px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.8); }
+#reaction-picker.active { display: flex; }
+#reaction-picker span { font-size: 20px; cursor: pointer; transition: .15s; }
+#reaction-picker span:hover { transform: scale(1.3); }
