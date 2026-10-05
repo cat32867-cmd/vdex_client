@@ -1,327 +1,247 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#030303">
-    <title>VX Messenger | Ultimate Responsive Node</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#030303">
+<title>VX Messenger | Ultimate Responsive Node</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body data-theme="dark">
-    <canvas id="vx-bg-canvas" aria-hidden="true"></canvas>
 
-    <div id="mobile-overlay" class="overlay"></div>
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M9 14v1"/><path d="M15 14v1"/><path d="M2 13h2"/><path d="M20 13h2"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+<symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-reply" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></symbol>
+<symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></symbol>
+<symbol id="i-phone-off" viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+</svg>
 
-    <aside id="acc-strip" aria-label="Аккаунты и действия">
-        <div id="btn-profile" class="node-avatar" data-title="Профиль" role="button" tabindex="0">?</div>
-        <div class="strip-divider"></div>
-        <button class="strip-action search" id="btn-search-user" data-title="Поиск узла" aria-label="Поиск узла">🔍</button>
-        <button class="strip-action call" id="btn-global-call" data-title="Видеосвязь" aria-label="Видеосвязь">📞</button>
-        <button class="strip-action" id="btn-call-ai" data-title="ИИ-Ассистент" aria-label="ИИ-Ассистент">🤖</button>
-        <button class="strip-action settings" id="btn-settings" data-title="Настройки" aria-label="Настройки">⚙️</button>
-        <div class="spacer"></div>
-        <button class="strip-action" id="btn-donate" data-title="Поддержать" aria-label="Поддержать">💖</button>
-        <button class="strip-action danger" id="btn-logout" data-title="Выйти" aria-label="Выйти">⏻</button>
-    </aside>
+<canvas id="vx-bg-canvas" aria-hidden="true"></canvas>
+<div id="mobile-overlay" class="overlay"></div>
 
-    <aside id="channels-panel" aria-label="Каналы">
-        <div class="server-status-bar" id="server-status">
-            <div class="srv-title">VX_DATACENTER</div>
-            <div class="srv-subtitle">
-                <span id="ping-dot" class="srv-ping"></span>
-                <span id="server-status-text">ОБРЫВ СВЯЗИ</span>
-            </div>
-        </div>
-        <div class="create-group-container">
-            <button class="btn-create-group" id="btn-create-group">
-                <span>+</span>
-                <span>НОВЫЙ УЗЕЛ</span>
-            </button>
-        </div>
-        <div class="channels-header">
-            <span>Активные сегменты</span>
-            <span>▼</span>
-        </div>
-        <div class="channels-list" id="channel-list-container" role="list"></div>
-    </aside>
+<aside id="acc-strip">
+<div id="btn-profile" class="node-avatar" data-title="Профиль" role="button" tabindex="0">?<span id="status-indicator" class="online-dot"></span></div>
+<div class="strip-divider"></div>
+<button class="strip-action search" id="btn-search-user" data-title="Поиск узла"><svg class="icon"><use href="#i-search"/></svg></button>
+<button class="strip-action call" id="btn-global-call" data-title="Видеосвязь"><svg class="icon"><use href="#i-phone"/></svg></button>
+<button class="strip-action ai" id="btn-call-ai" data-title="ИИ-Ассистент"><svg class="icon"><use href="#i-bot"/></svg></button>
+<button class="strip-action settings" id="btn-settings" data-title="Настройки"><svg class="icon"><use href="#i-sliders"/></svg></button>
+<div class="spacer"></div>
+<button class="strip-action donate" id="btn-donate" data-title="Поддержать"><svg class="icon"><use href="#i-heart"/></svg></button>
+<button class="strip-action danger" id="btn-logout" data-title="Выйти"><svg class="icon"><use href="#i-logout"/></svg></button>
+</aside>
 
-    <main id="chat-area">
-        <header class="chat-header">
-            <div class="header-left-group">
-                <button class="btn-menu-toggle" id="btn-menu-toggle" aria-label="Меню">☰</button>
-                <div class="chat-title-box">
-                    <span class="chat-title-hash">#</span>
-                    <span class="chat-title-name" id="current-ch-name">загрузка...</span>
-                    <span class="chat-title-desc" id="current-ch-desc">Инициализация БД...</span>
-                </div>
-            </div>
-            <div class="chat-header-actions">
-                <button class="strip-action" id="btn-toggle-rp" data-title="Инфо" aria-label="Инфо о канале">ℹ️</button>
-            </div>
-        </header>
+<aside id="channels-panel">
+<div class="server-status-bar" id="server-status">
+<div class="srv-title">VX_DATACENTER</div>
+<div class="srv-subtitle"><span id="ping-dot" class="srv-ping"></span><span id="server-status-text">ОБРЫВ СВЯЗИ</span></div>
+</div>
+<div class="create-group-container">
+<button class="btn-create-group" id="btn-create-group"><svg class="icon sm"><use href="#i-plus"/></svg><span>НОВЫЙ УЗЕЛ</span></button>
+</div>
+<div class="channels-header"><span>Активные сегменты</span><span>▼</span></div>
+<div class="channels-list" id="channel-list-container"></div>
+</aside>
 
-        <div class="messages-container" id="chat-flow" role="log" aria-live="polite"></div>
+<main id="chat-area">
+<header class="chat-header">
+<div class="header-left-group">
+<button class="btn-menu-toggle" id="btn-menu-toggle"><svg class="icon lg"><use href="#i-menu"/></svg></button>
+<div class="chat-title-box">
+<span class="chat-title-hash">#</span>
+<span class="chat-title-name" id="current-ch-name">загрузка...</span>
+<span class="chat-title-desc" id="current-ch-desc">Инициализация БД...</span>
+</div>
+</div>
+<div class="chat-header-actions">
+<button class="strip-action" id="btn-toggle-rp" data-title="Инфо"><svg class="icon"><use href="#i-info"/></svg></button>
+</div>
+</header>
+<div class="messages-container" id="chat-flow"></div>
+<button id="btn-scroll-down"><svg class="icon"><use href="#i-down"/></svg></button>
+<footer class="chat-input-area">
+<div class="input-wrapper" id="input-wrapper">
+<button class="btn-attach" id="btn-upload-file"><svg class="icon"><use href="#i-paperclip"/></svg></button>
+<input type="file" id="hidden-file-input" accept="image/*" hidden>
+<textarea id="msg-input" placeholder="Трансляция... (/help)" rows="1"></textarea>
+<button class="btn-voice" id="btn-voice-record"><svg class="icon"><use href="#i-mic"/></svg></button>
+<button class="btn-send" id="btn-send-msg"><svg class="icon"><use href="#i-send"/></svg></button>
+</div>
+</footer>
+</main>
 
-        <footer class="chat-input-area">
-            <div class="input-wrapper" id="input-wrapper">
-                <button class="btn-attach" id="btn-upload-file" aria-label="Прикрепить файл">📎</button>
-                <input type="file" id="hidden-file-input" accept="image/*" hidden>
-                <textarea id="msg-input" placeholder="Трансляция... (/help)" rows="1" aria-label="Поле ввода сообщения"></textarea>
-                <button class="btn-voice" id="btn-voice-record" aria-label="Голосовое сообщение">🎤</button>
-                <button class="btn-send" id="btn-send-msg" aria-label="Отправить">➤</button>
-            </div>
-        </footer>
-    </main>
+<aside id="right-panel">
+<header class="rp-header"><span>СВОДКА СЕГМЕНТА</span><button class="btn-close" id="btn-close-rp"><svg class="icon"><use href="#i-x"/></svg></button></header>
+<div class="rp-content">
+<div><div class="rp-section-title">ИНФО</div><p id="rp-desc" style="color:var(--text-muted);font-size:13px;">Загрузка описания...</p></div>
+<div><div class="rp-section-title">ШИФРОВАНИЕ</div><div style="display:flex;align-items:center;gap:8px;color:var(--vx-primary);font-family:var(--font-mono);font-size:12px;"><svg class="icon sm"><use href="#i-lock"/></svg><span>AES-GCM 256-BIT</span></div></div>
+<div><div class="rp-section-title">УЗЛЫ В СЕТИ (<span id="rp-member-count">0</span>)</div><div id="rp-members-list"></div></div>
+<div><div class="rp-section-title">ID УЗЛА</div><div style="font-family:var(--font-mono);font-size:12px;color:var(--vx-info);word-break:break-all;" id="node-id-display"></div></div>
+</div>
+</aside>
 
-    <aside id="right-panel" aria-label="Информация о канале">
-        <header class="rp-header">
-            <span>СВОДКА СЕГМЕНТА</span>
-            <button class="btn-close" id="btn-close-rp" aria-label="Закрыть">×</button>
-        </header>
-        <div class="rp-content">
-            <div>
-                <div class="rp-section-title">ИНФО</div>
-                <p id="rp-desc" style="color: var(--text-muted); font-size: 13px;">Загрузка описания...</p>
-            </div>
-            <div>
-                <div class="rp-section-title">ШИФРОВАНИЕ</div>
-                <div style="display:flex; align-items:center; gap:8px; color:var(--vx-primary); font-family:var(--font-mono); font-size:12px;">
-                    <span>🔒</span>
-                    <span>AES-GCM 256-BIT</span>
-                </div>
-            </div>
-            <div>
-                <div class="rp-section-title">УЗЛЫ В СЕТИ (<span id="rp-member-count">0</span>)</div>
-                <div id="rp-members-list"></div>
-            </div>
-            <div>
-                <div class="rp-section-title">ID УЗЛА</div>
-                <div style="font-family:var(--font-mono); font-size:12px; color:var(--vx-info); word-break:break-all;" id="node-id-display"></div>
-            </div>
-        </div>
-    </aside>
+<div id="context-menu">
+<div class="ctx-item" id="ctx-copy"><svg class="icon sm"><use href="#i-copy"/></svg> Копировать текст</div>
+<div class="ctx-item" id="ctx-reply"><svg class="icon sm"><use href="#i-reply"/></svg> Ответить</div>
+<div class="ctx-item danger" id="ctx-delete"><svg class="icon sm"><use href="#i-trash"/></svg> Удалить локально</div>
+</div>
+<div id="channel-context-menu">
+<div class="ctx-item" id="ctx-leave-channel"><svg class="icon sm"><use href="#i-logout"/></svg> Выйти из группы</div>
+</div>
+<div id="admin-menu">
+<div class="ctx-item" id="adm-ban"><svg class="icon sm"><use href="#i-ban"/></svg> Забанить</div>
+<div class="ctx-item" id="adm-kick"><svg class="icon sm"><use href="#i-logout"/></svg> Кикнуть</div>
+<div class="ctx-item" id="adm-copy"><svg class="icon sm"><use href="#i-copy"/></svg> Скопировать ID</div>
+</div>
 
-    <div id="context-menu" role="menu">
-        <div class="ctx-item" id="ctx-copy" role="menuitem">📋 Копировать текст</div>
-        <div class="ctx-item" id="ctx-reply" role="menuitem">↩️ Ответить</div>
-        <div class="ctx-item danger" id="ctx-delete" role="menuitem">🗑️ Удалить локально</div>
-    </div>
+<div id="modal-auth" class="overlay active">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-lock"/></svg> VX_CORE_BOOT</h2></header>
+<div class="modal-body">
+<div class="auth-mode-toggle">
+<button class="auth-mode-btn active" id="auth-mode-login">ВХОД</button>
+<button class="auth-mode-btn" id="auth-mode-register">РЕГИСТРАЦИЯ</button>
+</div>
+<h3 id="auth-mode-title" class="auth-subtitle">ИДЕНТИФИКАЦИЯ УЗЛА</h3>
+<div class="form-group"><label for="auth-nick-input">Позывной (Никнейм)</label><input class="form-input" id="auth-nick-input" type="text" autocomplete="username"></div>
+<div class="form-group"><label for="auth-pass-input">Ключ доступа (Пароль)</label><input class="form-input" id="auth-pass-input" type="password" autocomplete="current-password"></div>
+</div>
+<footer class="modal-footer"><button class="btn-modal btn-submit" id="btn-auth-submit">ИНИЦИАЛИЗАЦИЯ</button></footer>
+</div>
+</div>
 
-    <div id="channel-context-menu" role="menu">
-        <div class="ctx-item" id="ctx-leave-channel" role="menuitem">🚪 Выйти из группы</div>
-    </div>
+<div id="modal-settings" class="overlay">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-sliders"/></svg> Настройки</h2><button class="btn-close" onclick="VXApp.UI.closeModal('modal-settings')"><svg class="icon"><use href="#i-x"/></svg></button></header>
+<div class="modal-body">
+<div class="form-group"><label for="settings-uid">Ваш ID (Публичный ключ)</label><input class="form-input" id="settings-uid" type="text" readonly></div>
+<div class="form-group"><label for="settings-theme">Тема оформления</label><select class="form-input" id="settings-theme"><option value="dark">VX Dark (По умолчанию)</option><option value="crimson">Crimson Protocol (Красная)</option><option value="ocean">Deep Ocean (Синяя)</option></select></div>
+<div class="form-group"><label>Очистка данных</label><button class="btn-modal btn-danger" id="btn-clear-db">Форматировать базу IndexedDB</button></div>
+</div>
+<footer class="modal-footer"><button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-settings')">Закрыть</button></footer>
+</div>
+</div>
 
-    <div id="modal-auth" class="overlay active">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">🛡️ VX_CORE_BOOT</h2>
-            </header>
-            <div class="modal-body">
-                <div class="auth-mode-toggle" role="tablist">
-                    <button class="auth-mode-btn active" id="auth-mode-login" role="tab" aria-selected="true">ВХОД</button>
-                    <button class="auth-mode-btn" id="auth-mode-register" role="tab" aria-selected="false">РЕГИСТРАЦИЯ</button>
-                </div>
-                <h3 id="auth-mode-title" style="font-size:14px; font-family:var(--font-mono); color:var(--vx-primary);">ИДЕНТИФИКАЦИЯ УЗЛА</h3>
-                <div class="form-group">
-                    <label for="auth-nick-input">Позывной (Никнейм)</label>
-                    <input class="form-input" id="auth-nick-input" type="text" autocomplete="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="auth-pass-input">Ключ доступа (Пароль)</label>
-                    <input class="form-input" id="auth-pass-input" type="password" autocomplete="current-password" required>
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-modal btn-submit" id="btn-auth-submit">ИНИЦИАЛИЗАЦИЯ</button>
-            </footer>
-        </div>
-    </div>
+<div id="modal-create-group" class="overlay">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-plus"/></svg> Регистрация Сегмента</h2><button class="btn-close" onclick="VXApp.UI.closeModal('modal-create-group')"><svg class="icon"><use href="#i-x"/></svg></button></header>
+<div class="modal-body">
+<div class="form-group"><label for="new-group-name">Идентификатор (без пробелов)</label><input class="form-input" id="new-group-name" type="text" placeholder="EXAMPLE_NAME"></div>
+<div class="form-group"><label for="new-group-desc">Назначение (Описание)</label><input class="form-input" id="new-group-desc" type="text"></div>
+</div>
+<footer class="modal-footer"><button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-create-group')">Отмена</button><button class="btn-modal btn-submit" id="btn-confirm-create">Активировать</button></footer>
+</div>
+</div>
 
-    <div id="modal-settings" class="overlay">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">⚙️ Системные Настройки</h2>
-                <button class="btn-close" onclick="VXApp.UI.closeModal('modal-settings')">×</button>
-            </header>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="settings-uid">Ваш ID (Публичный ключ)</label>
-                    <input class="form-input" id="settings-uid" type="text" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="settings-theme">Тема оформления</label>
-                    <select class="form-input" id="settings-theme">
-                        <option value="dark">VX Dark (По умолчанию)</option>
-                        <option value="crimson">Crimson Protocol (Красная)</option>
-                        <option value="ocean">Deep Ocean (Синяя)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Очистка данных</label>
-                    <button class="btn-modal btn-danger" id="btn-clear-db">Форматировать базу IndexedDB</button>
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-settings')">Закрыть</button>
-            </footer>
-        </div>
-    </div>
+<div id="modal-search-user" class="overlay">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-search"/></svg> Глобальный Поиск</h2><button class="btn-close" onclick="VXApp.UI.closeModal('modal-search-user')"><svg class="icon"><use href="#i-x"/></svg></button></header>
+<div class="modal-body">
+<div class="form-group"><label for="search-node-id">ID узла для связи</label><input class="form-input" id="search-node-id" type="text" placeholder="node_abc123"></div>
+<div id="search-result" style="display:none;padding:15px;background:var(--vx-primary-dim);border:1px solid var(--vx-primary);border-radius:6px;margin-top:10px;">
+<div style="font-family:var(--font-mono);font-size:12px;color:var(--vx-primary);margin-bottom:5px;">УЗЕЛ НАЙДЕН</div>
+<div id="found-user-nick" style="font-weight:bold;color:var(--text-main);"></div>
+<div id="found-user-id" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+</div>
+</div>
+<footer class="modal-footer"><button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-search-user')">Отмена</button><button class="btn-modal btn-submit" id="btn-execute-search">ПОИСК...</button><button class="btn-modal btn-submit" id="btn-start-call" style="background:var(--vx-info);">Видеосвязь</button><button class="btn-modal btn-submit" id="btn-invite-to-channel" style="background:var(--vx-warn);">В чат</button></footer>
+</div>
+</div>
 
-    <div id="modal-create-group" class="overlay">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">📁 Регистрация Сегмента</h2>
-                <button class="btn-close" onclick="VXApp.UI.closeModal('modal-create-group')">×</button>
-            </header>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="new-group-name">Идентификатор (без пробелов)</label>
-                    <input class="form-input" id="new-group-name" type="text" placeholder="EXAMPLE_NAME">
-                </div>
-                <div class="form-group">
-                    <label for="new-group-desc">Назначение (Описание)</label>
-                    <input class="form-input" id="new-group-desc" type="text">
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-create-group')">Отмена</button>
-                <button class="btn-modal btn-submit" id="btn-confirm-create">Активировать</button>
-            </footer>
-        </div>
-    </div>
+<div id="modal-incoming-call" class="overlay">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-phone"/></svg> ВХОДЯЩИЙ ЗАПРОС</h2></header>
+<div class="modal-body" style="text-align:center;">
+<div class="call-pulse"><svg class="icon lg"><use href="#i-phone"/></svg></div>
+<div style="margin-top:20px;"><div style="font-size:12px;color:var(--text-muted);">ВЫЗОВ ОТ</div><div id="inc-call-caller" style="font-size:18px;font-weight:bold;font-family:var(--font-mono);margin-top:5px;"></div></div>
+</div>
+<footer class="modal-footer" style="justify-content:center;"><button class="btn-modal btn-danger" id="btn-reject-call" style="width:60px;"><svg class="icon"><use href="#i-x"/></svg></button><button class="btn-modal btn-submit" id="btn-accept-call" style="width:60px;"><svg class="icon"><use href="#i-check"/></svg></button></footer>
+</div>
+</div>
 
-    <div id="modal-search-user" class="overlay">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">🌐 Глобальный Поиск</h2>
-                <button class="btn-close" onclick="VXApp.UI.closeModal('modal-search-user')">×</button>
-            </header>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="search-node-id">ID узла для связи</label>
-                    <input class="form-input" id="search-node-id" type="text" placeholder="node_abc123">
-                </div>
-                <div id="search-result" style="display:none; padding:15px; background:var(--vx-primary-dim); border:1px solid var(--vx-primary); border-radius:6px; margin-top:10px;">
-                    <div style="font-family:var(--font-mono); font-size:12px; color:var(--vx-primary); margin-bottom:5px;">УЗЕЛ НАЙДЕН</div>
-                    <div id="found-user-nick" style="font-weight:bold; color:var(--text-main);"></div>
-                    <div id="found-user-id" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;"></div>
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-search-user')">Отмена</button>
-                <button class="btn-modal btn-submit" id="btn-execute-search">ПОИСК...</button>
-                <button class="btn-modal btn-submit" id="btn-start-call" style="background:var(--vx-info);">Видеосвязь</button>
-                <button class="btn-modal btn-submit" id="btn-invite-to-channel" style="background:var(--vx-warn);">Пригласить в чат</button>
-            </footer>
-        </div>
-    </div>
+<div id="modal-profile" class="overlay">
+<div class="modal">
+<header class="modal-header"><h2 class="modal-title"><svg class="icon"><use href="#i-user"/></svg> ПРОФИЛЬ УЗЛА</h2><button class="btn-close" onclick="VXApp.UI.closeModal('modal-profile')"><svg class="icon"><use href="#i-x"/></svg></button></header>
+<div class="modal-body" style="align-items:center;">
+<div id="profile-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--vx-primary-dim);border:2px solid var(--vx-primary);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:var(--vx-primary);background-size:cover;background-position:center;cursor:pointer;" onclick="document.getElementById('profile-avatar-input').click()">?</div>
+<input type="file" id="profile-avatar-input" accept="image/*" hidden>
+<button class="btn-modal btn-cancel" id="btn-change-avatar" style="margin-top:10px;">Выбрать аватар</button>
+<div class="form-group" style="width:100%;"><label for="profile-nick">Позывной</label><input class="form-input" id="profile-nick" type="text"></div>
+</div>
+<footer class="modal-footer"><button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-profile')">Отмена</button><button class="btn-modal btn-submit" id="btn-save-profile">Сохранить</button></footer>
+</div>
+</div>
 
-    <div id="modal-incoming-call" class="overlay">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">📲 ВХОДЯЩИЙ ЗАПРОС</h2>
-            </header>
-            <div class="modal-body" style="text-align:center;">
-                <div class="call-pulse">📞</div>
-                <div style="margin-top:20px;">
-                    <div style="font-size:12px; color:var(--text-muted);">ВЫЗОВ ОТ</div>
-                    <div id="inc-call-caller" style="font-size:18px; font-weight:bold; font-family:var(--font-mono); margin-top:5px;"></div>
-                </div>
-            </div>
-            <footer class="modal-footer" style="justify-content:center;">
-                <button class="btn-modal btn-danger" id="btn-reject-call" style="width:60px;">✕</button>
-                <button class="btn-modal btn-submit" id="btn-accept-call" style="width:60px;">✓</button>
-            </footer>
-        </div>
-    </div>
+<div id="modal-ai" class="overlay">
+<div class="modal ai-modal">
+<header class="modal-header ai-header">
+<h2 class="modal-title"><svg class="icon"><use href="#i-bot"/></svg> VX_AI_ASSISTANT <span class="ai-status" id="ai-status">OFFLINE</span></h2>
+<div style="display:flex;gap:8px;">
+<button class="btn-close" id="btn-clear-ai-chat"><svg class="icon"><use href="#i-trash"/></svg></button>
+<button class="btn-close" onclick="VXApp.UI.closeModal('modal-ai')"><svg class="icon"><use href="#i-x"/></svg></button>
+</div>
+</header>
+<div class="ai-chat-container" id="ai-chat-container">
+<div class="ai-welcome">
+<div class="ai-welcome-icon"><svg class="icon" style="width:64px;height:64px;"><use href="#i-bot"/></svg></div>
+<h3>VX Neural Core v1.0</h3>
+<p>Локальная нейросеть Qwen1.5-0.5B. Работает прямо в браузере без отправки данных на сервер.</p>
+<div class="ai-quick-prompts">
+<button class="ai-prompt-chip" data-prompt="Объясни, как работает WebRTC">Как работает WebRTC?</button>
+<button class="ai-prompt-chip" data-prompt="Напиши простой шифр на JS">Простой шифр</button>
+<button class="ai-prompt-chip" data-prompt="Помоги оптимизировать JavaScript код">Оптимизация JS</button>
+<button class="ai-prompt-chip" data-prompt="Расскажи про end-to-end шифрование">E2E шифрование</button>
+</div>
+</div>
+</div>
+<footer class="ai-input-area">
+<div class="ai-input-wrapper">
+<textarea id="ai-input" placeholder="Задай вопрос ИИ..." rows="1"></textarea>
+<button class="ai-send-btn" id="btn-send-ai"><svg class="icon"><use href="#i-send"/></svg></button>
+</div>
+<div class="ai-footer-info"><span>Модель ~900MB, загружается один раз в кэш</span></div>
+</footer>
+</div>
+</div>
 
-    <div id="modal-profile" class="overlay">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 class="modal-title">👤 ПРОФИЛЬ УЗЛА</h2>
-                <button class="btn-close" onclick="VXApp.UI.closeModal('modal-profile')">×</button>
-            </header>
-            <div class="modal-body" style="align-items:center;">
-                <div id="profile-avatar" style="width:80px; height:80px; border-radius:50%; background:var(--vx-primary-dim); border:2px solid var(--vx-primary); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:bold; color:var(--vx-primary); background-size:cover; background-position:center; cursor:pointer;" onclick="document.getElementById('profile-avatar-input').click()">?</div>
-                <input type="file" id="profile-avatar-input" accept="image/*" hidden>
-                <button class="btn-modal btn-cancel" id="btn-change-avatar" style="margin-top:10px;">Выбрать аватар</button>
-                <div class="form-group" style="width:100%;">
-                    <label for="profile-nick">Позывной</label>
-                    <input class="form-input" id="profile-nick" type="text">
-                </div>
-            </div>
-            <footer class="modal-footer">
-                <button class="btn-modal btn-cancel" onclick="VXApp.UI.closeModal('modal-profile')">Отмена</button>
-                <button class="btn-modal btn-submit" id="btn-save-profile">Сохранить</button>
-            </footer>
-        </div>
-    </div>
+<div id="webrtc-container">
+<div class="video-grid">
+<div class="video-wrapper" id="remote-video-wrapper" style="display:none;"><video id="remote-video" autoplay playsinline></video><div class="video-label" id="remote-video-label">УДАЛЕННЫЙ УЗЕЛ</div></div>
+<div class="video-wrapper" style="max-width:200px;max-height:150px;position:absolute;bottom:100px;right:20px;z-index:10;"><video id="local-video" autoplay playsinline muted></video><div class="video-label">ВЫ (Локально)</div></div>
+</div>
+<div class="call-controls">
+<button class="btn-call-ctrl" id="btn-toggle-mic"><svg class="icon"><use href="#i-mic"/></svg></button>
+<button class="btn-call-ctrl danger" id="btn-end-call"><svg class="icon"><use href="#i-phone-off"/></svg></button>
+<button class="btn-call-ctrl" id="btn-toggle-cam"><svg class="icon"><use href="#i-cam"/></svg></button>
+</div>
+</div>
 
-    <!-- НОВОЕ ОКНО ИИ-АССИСТЕНТА -->
-    <div id="modal-ai" class="overlay">
-        <div class="modal ai-modal">
-            <header class="modal-header ai-header">
-                <h2 class="modal-title">🤖 VX_AI_ASSISTANT <span class="ai-status" id="ai-status">OFFLINE</span></h2>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn-close" id="btn-clear-ai-chat" title="Очистить диалог" style="font-size:18px;">🗑️</button>
-                    <button class="btn-close" onclick="VXApp.UI.closeModal('modal-ai')">×</button>
-                </div>
-            </header>
-            <div class="ai-chat-container" id="ai-chat-container">
-                <div class="ai-welcome">
-                    <div class="ai-welcome-icon">🤖</div>
-                    <h3>VX Neural Core v1.0</h3>
-                    <p>Локальная нейросеть Qwen1.5-0.5B. Работает прямо в браузере без отправки данных на сервер.</p>
-                    <div class="ai-quick-prompts">
-                        <button class="ai-prompt-chip" data-prompt="Объясни, как работает WebRTC">💡 Как работает WebRTC?</button>
-                        <button class="ai-prompt-chip" data-prompt="Напиши простой шифр на JS">🔐 Простой шифр</button>
-                        <button class="ai-prompt-chip" data-prompt="Помоги оптимизировать JavaScript код">⚡ Оптимизация JS</button>
-                        <button class="ai-prompt-chip" data-prompt="Расскажи про end-to-end шифрование">🛡️ E2E шифрование</button>
-                    </div>
-                </div>
-            </div>
-            <footer class="ai-input-area">
-                <div class="ai-input-wrapper">
-                    <textarea id="ai-input" placeholder="Задай вопрос ИИ..." rows="1"></textarea>
-                    <button class="ai-send-btn" id="btn-send-ai" aria-label="Отправить запрос">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                    </button>
-                </div>
-                <div class="ai-footer-info">
-                    <span>⚠️ Модель ~900MB, загружается один раз в кэш</span>
-                </div>
-            </footer>
-        </div>
-    </div>
+<div id="image-viewer" class="overlay">
+<button class="btn-close" onclick="VXApp.UI.closeModal('image-viewer')" style="position:absolute;top:20px;right:20px;color:white;z-index:10;"><svg class="icon lg"><use href="#i-x"/></svg></button>
+<img id="full-image" alt="Просмотр изображения">
+</div>
 
-    <div id="webrtc-container">
-        <div class="video-grid">
-            <div class="video-wrapper" id="remote-video-wrapper" style="display:none;">
-                <video id="remote-video" autoplay playsinline></video>
-                <div class="video-label" id="remote-video-label">УДАЛЕННЫЙ УЗЕЛ</div>
-            </div>
-            <div class="video-wrapper" style="max-width:200px; max-height:150px; position:absolute; bottom:100px; right:20px; z-index:10;">
-                <video id="local-video" autoplay playsinline muted></video>
-                <div class="video-label">ВЫ (Локально)</div>
-            </div>
-        </div>
-        <div class="call-controls">
-            <button class="btn-call-ctrl" id="btn-toggle-mic" aria-label="Микрофон">🎤</button>
-            <button class="btn-call-ctrl danger" id="btn-end-call" aria-label="Завершить">📴</button>
-            <button class="btn-call-ctrl" id="btn-toggle-cam" aria-label="Камера">📹</button>
-        </div>
-    </div>
+<div id="toast-container"></div>
 
-    <div id="image-viewer" class="overlay">
-        <button class="btn-close" onclick="VXApp.UI.closeModal('image-viewer')" style="position:absolute; top:20px; right:20px; font-size:40px; color:white; z-index:10;">×</button>
-        <img id="full-image" alt="Просмотр изображения">
-    </div>
-
-    <div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
-
-    <script src="script.js" defer></script>
+<script src="script.js" defer></script>
 </body>
 </html>
