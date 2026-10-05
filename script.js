@@ -27,7 +27,10 @@ const VXConfig = {
         { id: 'DEV_NULL', name: 'DEV_NULL', desc: 'Разработка и багрепорты', isDefault: true }
     ],
     MAX_IMAGE_WIDTH: 1080,
-    IMAGE_QUALITY: 0.7
+    IMAGE_QUALITY: 0.7,
+    // ВПИШИ СЮДА СВОЙ node ID — включится шестерёнка модерации.
+    // Свой ID виден в настройках (⚙️) в поле "Ваш ID".
+    LOCAL_ADMINS: []
 };
 
 const VXState = {
@@ -35,7 +38,8 @@ const VXState = {
         nickname: localStorage.getItem('vx_nick') || null,
         uid: localStorage.getItem('vx_uuid') || ('node_' + Math.random().toString(36).substr(2, 9)),
         theme: localStorage.getItem('vx_theme') || 'dark',
-        avatar: localStorage.getItem('vx_avatar') || null
+        avatar: localStorage.getItem('vx_avatar') || null,
+        role: 'user'
     },
     network: { socket: null, isConnected: false, isReconnecting: false, peerConnections: {} },
     ui: { activeChannelId: 'GLOBAL', channels: [], unread: {} },
@@ -73,12 +77,7 @@ const VXAccounts = {
         }
         const newUid = uid || ('node_' + Math.random().toString(36).substr(2, 9));
         const passwordHash = await this.hashPassword(password);
-        accounts[nickname] = {
-            passwordHash,
-            uid: newUid,
-            avatar: null,
-            createdAt: Date.now()
-        };
+        accounts[nickname] = { passwordHash, uid: newUid, avatar: null, createdAt: Date.now() };
         this.saveAll(accounts);
         return { success: true, uid: newUid };
     },
@@ -110,7 +109,7 @@ const VXAccounts = {
     }
 };
 
-// ========== ИИ-МОДУЛЬ (обновлён) ==========
+// ========== ИИ-МОДУЛЬ ==========
 class VXLocalAI {
     constructor() {
         this.model = null;
@@ -119,17 +118,14 @@ class VXLocalAI {
         this.isLoading = false;
         this.history = JSON.parse(localStorage.getItem('vx_ai_history') || '[]');
     }
-
     async init() {
         if (this.isReady || this.isLoading) return;
         this.isLoading = true;
         this.updateStatus('loading');
-
         try {
             const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.0');
             const { pipeline, env } = transformers;
             env.allowLocalModels = false;
-
             this.generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat', {
                 progress_callback: (progress) => {
                     if (progress.status === 'progress' && progress.file?.includes('model')) {
@@ -137,11 +133,10 @@ class VXLocalAI {
                     }
                 }
             });
-
             this.isReady = true;
             this.isLoading = false;
             this.updateStatus('ready');
-            VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН. Нажмите 🤖 для диалога.");
+            VXApp.UI.appendSystem("ИИ-МОДУЛЬ АКТИВЕН.");
         } catch (error) {
             console.error('AI init error:', error);
             this.isLoading = false;
@@ -149,69 +144,46 @@ class VXLocalAI {
             VXApp.UI.appendSystem(`ОШИБКА ИИ: ${error.message}`);
         }
     }
-
     updateStatus(status) {
         const statusEl = document.getElementById('ai-status');
         if (!statusEl) return;
         statusEl.className = 'ai-status';
-        if (status === 'ready') {
-            statusEl.classList.add('ready');
-            statusEl.textContent = 'ONLINE';
-        } else if (status === 'loading') {
-            statusEl.classList.add('loading');
-            statusEl.textContent = 'ЗАГРУЗКА...';
-        } else if (status === 'error') {
-            statusEl.textContent = 'ERROR';
-        } else {
-            statusEl.textContent = 'OFFLINE';
-        }
+        if (status === 'ready') { statusEl.classList.add('ready'); statusEl.textContent = 'ONLINE'; }
+        else if (status === 'loading') { statusEl.classList.add('loading'); statusEl.textContent = 'ЗАГРУЗКА...'; }
+        else if (status === 'error') { statusEl.textContent = 'ERROR'; }
+        else { statusEl.textContent = 'OFFLINE'; }
     }
-
-    async ask(prompt, onChunk) {
+    async ask(prompt) {
         if (!this.isReady) {
             if (!this.isLoading) await this.init();
             return "ИИ-модуль загружается, подождите...";
         }
-
-        const formattedPrompt = `<|system|>\nТы полезный ИИ-ассистент, встроенный в мессенджер Vdex. Отвечай кратко, по делу. Можешь использовать эмодзи и markdown.\n<|user|>\n${prompt}\n<|assistant|>\n`;
-
+        const formattedPrompt = `<|system|>\nТы полезный ИИ-ассистент, встроенный в мессенджер Vdex. Отвечай кратко, по делу. Можешь использовать markdown.\n<|user|>\n${prompt}\n<|assistant|>\n`;
         try {
             const output = await this.generator(formattedPrompt, {
-                max_new_tokens: 300,
-                temperature: 0.7,
-                do_sample: true,
-                top_k: 50
+                max_new_tokens: 300, temperature: 0.7, do_sample: true, top_k: 50
             });
-
             const fullText = output[0].generated_text;
             const response = (fullText.split('<|assistant|>\n')[1] || fullText).trim();
-
-            // Сохраняем в историю
             this.history.push({ role: 'user', content: prompt, time: Date.now() });
             this.history.push({ role: 'assistant', content: response, time: Date.now() });
             if (this.history.length > 50) this.history = this.history.slice(-50);
             localStorage.setItem('vx_ai_history', JSON.stringify(this.history));
-
             return response;
         } catch (error) {
             console.error('AI generation error:', error);
             return `СБОЙ ГЕНЕРАЦИИ: ${error.message}`;
         }
     }
-
     clearHistory() {
         this.history = [];
         localStorage.removeItem('vx_ai_history');
     }
-
-    getHistory() {
-        return this.history;
-    }
+    getHistory() { return this.history; }
 }
 
 class VXIndexedDB {
     constructor() { this.db = null; }
-
     async init() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(VXConfig.DB_NAME, VXConfig.DB_VERSION);
@@ -230,37 +202,31 @@ class VXIndexedDB {
             request.onerror = (e) => reject(e);
         });
     }
-
     async saveMessage(msg) {
-        if(!msg.id) msg.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-        if(!msg.timestamp) msg.timestamp = Date.now();
+        if (!msg.id) msg.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+        if (!msg.timestamp) msg.timestamp = Date.now();
         return new Promise((resolve, reject) => {
-            if(!this.db) return resolve();
+            if (!this.db) return resolve();
             const tx = this.db.transaction(['messages'], 'readwrite');
-            const store = tx.objectStore('messages');
-            const request = store.put(msg);
+            const request = tx.objectStore('messages').put(msg);
             request.onsuccess = () => resolve(msg);
             request.onerror = (e) => reject(e);
         });
     }
-
     async getMessages(channelId, limit = 100) {
         return new Promise((resolve, reject) => {
-            if(!this.db) return resolve([]);
+            if (!this.db) return resolve([]);
             const tx = this.db.transaction(['messages'], 'readonly');
-            const store = tx.objectStore('messages');
-            const index = store.index('channelId');
-            const request = index.getAll(IDBKeyRange.only(channelId));
+            const request = tx.objectStore('messages').index('channelId').getAll(IDBKeyRange.only(channelId));
             request.onsuccess = () => {
                 let msgs = request.result;
                 msgs.sort((a, b) => a.timestamp - b.timestamp);
-                if(msgs.length > limit) msgs = msgs.slice(msgs.length - limit);
+                if (msgs.length > limit) msgs = msgs.slice(msgs.length - limit);
                 resolve(msgs);
             };
             request.onerror = (e) => reject(e);
         });
     }
-
     async clearAll() {
         return new Promise((resolve) => {
             const tx = this.db.transaction(['messages', 'channels'], 'readwrite');
@@ -280,7 +246,7 @@ class VXCrypto {
     static async encrypt(text) { return btoa(unescape(encodeURIComponent(text))); }
     static async decrypt(base64Str) {
         try { return decodeURIComponent(escape(atob(base64Str))); }
-        catch(e) { return base64Str; }
+        catch (e) { return base64Str; }
     }
 }
 
@@ -292,7 +258,6 @@ class VXWebRTCManager {
         this.pendingOffer = null;
         this.config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     }
-
     async setupLocalMedia() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -306,7 +271,6 @@ class VXWebRTCManager {
             return false;
         }
     }
-
     createPeerConnection() {
         this.peerConnection = new RTCPeerConnection(this.config);
         if (this.localStream) {
@@ -320,11 +284,7 @@ class VXWebRTCManager {
         };
         this.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                VXApp.Network.transmit({
-                    type: "webrtc_ice",
-                    targetUid: this.targetNode,
-                    candidate: event.candidate
-                });
+                VXApp.Network.transmit({ type: "webrtc_ice", targetUid: this.targetNode, candidate: event.candidate });
             }
         };
         this.peerConnection.oniceconnectionstatechange = () => {
@@ -334,7 +294,6 @@ class VXWebRTCManager {
             }
         };
     }
-
     async initiateCall() {
         const target = document.getElementById('search-node-id').value.trim();
         if (!target) return VXApp.UI.showToast("Введите ID узла", "warn");
@@ -348,22 +307,17 @@ class VXWebRTCManager {
         const offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
         VXApp.Network.transmit({
-            type: "call_offer",
-            targetUid: this.targetNode,
-            callerUid: VXState.user.uid,
-            callerNick: VXState.user.nickname,
-            sdp: offer
+            type: "call_offer", targetUid: this.targetNode,
+            callerUid: VXState.user.uid, callerNick: VXState.user.nickname, sdp: offer
         });
         VXApp.UI.showToast(`Вызов отправлен узлу ${target}`, "info");
     }
-
     async handleIncomingOffer(data) {
         this.targetNode = data.callerUid;
         this.pendingOffer = data.sdp;
         document.getElementById('inc-call-caller').innerText = `${data.callerNick} (${data.callerUid})`;
         VXApp.UI.openModal('modal-incoming-call');
     }
-
     async acceptCall() {
         VXApp.UI.closeModal('modal-incoming-call');
         const mediaOk = await this.setupLocalMedia();
@@ -377,20 +331,14 @@ class VXWebRTCManager {
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(this.pendingOffer));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
-        VXApp.Network.transmit({
-            type: "call_answer",
-            targetUid: this.targetNode,
-            sdp: answer
-        });
+        VXApp.Network.transmit({ type: "call_answer", targetUid: this.targetNode, sdp: answer });
         this.pendingOffer = null;
     }
-
     async handleAnswer(data) {
         if (!this.peerConnection) return;
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
         document.getElementById('remote-video-label').innerText = `СОЕДИНЕНО С ${this.targetNode}`;
     }
-
     rejectCall() {
         VXApp.UI.closeModal('modal-incoming-call');
         if (this.targetNode) {
@@ -399,12 +347,8 @@ class VXWebRTCManager {
         }
         this.pendingOffer = null;
     }
-
     endCall() {
-        if (this.peerConnection) {
-            this.peerConnection.close();
-            this.peerConnection = null;
-        }
+        if (this.peerConnection) { this.peerConnection.close(); this.peerConnection = null; }
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;
@@ -419,7 +363,6 @@ class VXWebRTCManager {
         }
         VXApp.UI.showToast("Звонок завершён", "info");
     }
-
     handleRemoteHangup() {
         VXApp.UI.showToast("Собеседник завершил звонок", "warn");
         this.endCall();
@@ -433,7 +376,6 @@ class VXSearchManager {
         VXApp.UI.showToast(`Поиск узла ${uid}...`, "info");
         VXApp.Network.transmit({ type: "search_user", targetUid: uid });
     }
-
     handleSearchResult(data) {
         const resultDiv = document.getElementById('search-result');
         const nickEl = document.getElementById('found-user-nick');
@@ -448,22 +390,19 @@ class VXSearchManager {
             VXApp.UI.showToast("Узел не найден", "error");
         }
     }
-
     inviteToCurrent() {
         const target = document.getElementById('search-node-id').value.trim();
         if (!target) return VXApp.UI.showToast("Сначала найдите узел", "warn");
         VXApp.UI.showToast(`Приглашение отправлено узлу ${target}`, "info");
         VXApp.Network.transmit({
-            type: "invite_to_channel",
-            targetUid: target,
-            channelId: VXState.ui.activeChannelId,
-            fromNick: VXState.user.nickname
+            type: "invite_to_channel", targetUid: target,
+            channelId: VXState.ui.activeChannelId, fromNick: VXState.user.nickname
         });
         VXApp.UI.closeModal('modal-search-user');
     }
 }
 
-// ========== ИИ-ИНТЕРФЕЙС (НОВЫЙ) ==========
+// ========== ИИ-ИНТЕРФЕЙС ==========
 class VXAIInterface {
     constructor() {
         this.chatContainer = document.getElementById('ai-chat-container');
@@ -473,65 +412,52 @@ class VXAIInterface {
         this.isOpen = false;
         this.initListeners();
     }
-
     initListeners() {
         this.sendBtn.addEventListener('click', () => this.sendQuery());
         this.input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendQuery();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendQuery(); }
         });
         this.input.addEventListener('input', () => {
             this.input.style.height = 'auto';
             this.input.style.height = Math.min(this.input.scrollHeight, 120) + 'px';
         });
         this.clearBtn.addEventListener('click', () => this.clearChat());
-
+        this.initPromptListeners();
+    }
+    initPromptListeners() {
         document.querySelectorAll('.ai-prompt-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                const prompt = chip.dataset.prompt;
-                this.input.value = prompt;
-                this.input.style.height = 'auto';
-                this.input.style.height = Math.min(this.input.scrollHeight, 120) + 'px';
+            chip.onclick = () => {
+                this.input.value = chip.dataset.prompt;
                 this.sendQuery();
-            });
+            };
         });
     }
-
     async open() {
         VXApp.UI.openModal('modal-ai');
         this.isOpen = true;
         this.renderHistory();
-
-        if (!VXApp.AI.isReady && !VXApp.AI.isLoading) {
-            await VXApp.AI.init();
-        }
-
+        if (!VXApp.AI.isReady && !VXApp.AI.isLoading) { await VXApp.AI.init(); }
         setTimeout(() => this.input.focus(), 300);
     }
-
     close() {
         VXApp.UI.closeModal('modal-ai');
         this.isOpen = false;
     }
-
     renderHistory() {
         const history = VXApp.AI.getHistory();
         const welcome = this.chatContainer.querySelector('.ai-welcome');
-
         if (history.length === 0) {
             if (!welcome) {
                 this.chatContainer.innerHTML = `
                     <div class="ai-welcome">
-                        <div class="ai-welcome-icon">🤖</div>
+                        <div class="ai-welcome-icon"><svg class="icon" style="width:64px;height:64px;" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M9 14v1"/><path d="M15 14v1"/><path d="M2 13h2"/><path d="M20 13h2"/></svg></div>
                         <h3>VX Neural Core v1.0</h3>
                         <p>Локальная нейросеть Qwen1.5-0.5B. Работает прямо в браузере без отправки данных на сервер.</p>
                         <div class="ai-quick-prompts">
-                            <button class="ai-prompt-chip" data-prompt="Объясни, как работает WebRTC">💡 Как работает WebRTC?</button>
-                            <button class="ai-prompt-chip" data-prompt="Напиши простой шифр на JS">🔐 Простой шифр</button>
-                            <button class="ai-prompt-chip" data-prompt="Помоги оптимизировать JavaScript код">⚡ Оптимизация JS</button>
-                            <button class="ai-prompt-chip" data-prompt="Расскажи про end-to-end шифрование">🛡️ E2E шифрование</button>
+                            <button class="ai-prompt-chip" data-prompt="Объясни, как работает WebRTC">Как работает WebRTC?</button>
+                            <button class="ai-prompt-chip" data-prompt="Напиши простой шифр на JS">Простой шифр</button>
+                            <button class="ai-prompt-chip" data-prompt="Помоги оптимизировать JavaScript код">Оптимизация JS</button>
+                            <button class="ai-prompt-chip" data-prompt="Расскажи про end-to-end шифрование">E2E шифрование</button>
                         </div>
                     </div>
                 `;
@@ -539,53 +465,30 @@ class VXAIInterface {
             }
             return;
         }
-
         if (welcome) welcome.remove();
-
         this.chatContainer.innerHTML = '';
-        history.forEach(msg => {
-            this.appendMessage(msg.role, msg.content, false);
-        });
-
+        history.forEach(msg => { this.appendMessage(msg.role, msg.content, false); });
         this.scrollToBottom();
     }
-
-    initPromptListeners() {
-        document.querySelectorAll('.ai-prompt-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                const prompt = chip.dataset.prompt;
-                this.input.value = prompt;
-                this.sendQuery();
-            });
-        });
-    }
-
     appendMessage(role, content, animate = true) {
         const welcome = this.chatContainer.querySelector('.ai-welcome');
         if (welcome) welcome.remove();
-
         const msgEl = document.createElement('div');
         msgEl.className = `ai-message ${role}`;
         if (!animate) msgEl.style.animation = 'none';
-
-        const avatar = role === 'user' ? '👤' : '🤖';
-        const formatted = this.formatMessage(content);
-
+        const avatarSvg = role === 'user'
+            ? '<svg class="icon sm" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+            : '<svg class="icon sm" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M9 14v1"/><path d="M15 14v1"/><path d="M2 13h2"/><path d="M20 13h2"/></svg>';
         msgEl.innerHTML = `
-            <div class="ai-avatar">${avatar}</div>
-            <div class="ai-bubble">${formatted}</div>
+            <div class="ai-avatar">${avatarSvg}</div>
+            <div class="ai-bubble">${this.formatMessage(content)}</div>
         `;
-
         this.chatContainer.appendChild(msgEl);
         if (animate) this.scrollToBottom();
     }
-
     formatMessage(text) {
-        // Базовое форматирование markdown
         let formatted = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
             .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -593,40 +496,29 @@ class VXAIInterface {
             .replace(/_(.+?)_/g, '<em>$1</em>');
         return formatted;
     }
-
     showThinking() {
         const msgEl = document.createElement('div');
         msgEl.className = 'ai-message assistant';
         msgEl.id = 'ai-thinking';
         msgEl.innerHTML = `
-            <div class="ai-avatar">🤖</div>
-            <div class="ai-bubble">
-                <div class="ai-thinking">
-                    <span></span><span></span><span></span>
-                </div>
-            </div>
+            <div class="ai-avatar"><svg class="icon sm" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M9 14v1"/><path d="M15 14v1"/><path d="M2 13h2"/><path d="M20 13h2"/></svg></div>
+            <div class="ai-bubble"><div class="ai-thinking"><span></span><span></span><span></span></div></div>
         `;
         this.chatContainer.appendChild(msgEl);
         this.scrollToBottom();
     }
-
     removeThinking() {
         const thinking = document.getElementById('ai-thinking');
         if (thinking) thinking.remove();
     }
-
     async sendQuery() {
         const query = this.input.value.trim();
         if (!query) return;
-
         this.input.value = '';
         this.input.style.height = 'auto';
-
         this.appendMessage('user', query);
         this.showThinking();
-
         this.sendBtn.disabled = true;
-
         try {
             const response = await VXApp.AI.ask(query);
             this.removeThinking();
@@ -639,18 +531,14 @@ class VXAIInterface {
             this.input.focus();
         }
     }
-
     clearChat() {
         if (!confirm('Очистить историю диалога с ИИ?')) return;
         VXApp.AI.clearHistory();
         this.renderHistory();
         VXApp.UI.showToast('История очищена', 'info');
     }
-
     scrollToBottom() {
-        requestAnimationFrame(() => {
-            this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
-        });
+        requestAnimationFrame(() => { this.chatContainer.scrollTop = this.chatContainer.scrollHeight; });
     }
 }
 
@@ -672,10 +560,11 @@ class VXInterface {
         this.audioChunks = [];
         this.isRecording = false;
         this.isSending = false;
+        this.lastDateStr = null;
+        this.adminTarget = null;
         this.initListeners();
         this.initVoiceRecorder();
     }
-
     initVoiceRecorder() {
         const voiceBtn = document.getElementById('btn-voice-record');
         if (!voiceBtn) return;
@@ -695,7 +584,7 @@ class VXInterface {
                     this.mediaRecorder.start();
                     this.isRecording = true;
                     voiceBtn.classList.add('recording');
-                    this.showToast("🔴 Запись голосового сообщения...", "info");
+                    this.showToast("Запись голосового сообщения...", "info");
                 } catch (e) {
                     this.showToast("Нет доступа к микрофону", "error");
                 }
@@ -709,7 +598,6 @@ class VXInterface {
             }
         });
     }
-
     async sendVoiceMessage(audioBlob) {
         if (this.isSending) return;
         this.isSending = true;
@@ -746,9 +634,7 @@ class VXInterface {
         };
         reader.readAsDataURL(audioBlob);
     }
-
     initListeners() {
-        // Фокус-эффект для инпута
         this.els.input.addEventListener('focus', () => {
             this.els.inputWrapper.classList.add('focused');
             if (window.innerWidth <= 850 && document.body.classList.contains('menu-open')) {
@@ -758,31 +644,24 @@ class VXInterface {
         this.els.input.addEventListener('blur', () => {
             this.els.inputWrapper.classList.remove('focused');
         });
-
         this.els.input.addEventListener('input', () => {
             this.els.input.style.height = '40px';
             this.els.input.style.height = (this.els.input.scrollHeight) + 'px';
             if (this.els.input.value.trim().length > 0) this.els.btnSend.classList.add('active');
             else this.els.btnSend.classList.remove('active');
         });
-
         this.els.input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleCommandOrMessage(); }
         });
-
         this.els.btnSend.addEventListener('click', () => this.handleCommandOrMessage());
-
         document.getElementById('btn-upload-file').addEventListener('click', () => document.getElementById('hidden-file-input').click());
         document.getElementById('hidden-file-input').addEventListener('change', (e) => VXApp.Media.handle(e));
-
         document.getElementById('btn-settings').addEventListener('click', () => {
             document.getElementById('settings-uid').value = VXState.user.uid;
             document.getElementById('settings-theme').value = VXState.user.theme;
             this.openModal('modal-settings');
         });
-
         document.getElementById('btn-clear-db').addEventListener('click', () => VXApp.Database.clearAll());
-
         document.getElementById('btn-logout').addEventListener('click', () => {
             localStorage.removeItem('vx_nick');
             localStorage.removeItem('vx_uuid');
@@ -791,22 +670,16 @@ class VXInterface {
             delete VXState._pendingHash;
             location.reload();
         });
-
         document.getElementById('btn-search-user').addEventListener('click', () => this.openModal('modal-search-user'));
         document.getElementById('btn-global-call').addEventListener('click', () => this.openModal('modal-search-user'));
         document.getElementById('btn-execute-search').addEventListener('click', () => VXApp.SearchManager.executeSearch());
         document.getElementById('btn-start-call').addEventListener('click', () => VXApp.WebRTC.initiateCall());
         document.getElementById('btn-invite-to-channel').addEventListener('click', () => VXApp.SearchManager.inviteToCurrent());
-
         // === КНОПКА ОТКРЫТИЯ ИИ ===
         document.getElementById('btn-call-ai').addEventListener('click', () => {
-            if (VXApp.AIInterface) {
-                VXApp.AIInterface.open();
-            }
+            if (VXApp.AIInterface) { VXApp.AIInterface.open(); }
         });
-
         document.getElementById('btn-create-group').addEventListener('click', () => this.openModal('modal-create-group'));
-
         document.getElementById('btn-confirm-create').addEventListener('click', () => {
             const n = document.getElementById('new-group-name').value.trim().toUpperCase().replace(/\s+/g, '_');
             const d = document.getElementById('new-group-desc').value.trim();
@@ -821,12 +694,10 @@ class VXInterface {
                 this.showToast("Имя группы слишком короткое", "error");
             }
         });
-
         document.getElementById('btn-toggle-rp').addEventListener('click', () => this.toggleRightPanel());
         document.getElementById('btn-close-rp').addEventListener('click', () => this.toggleRightPanel());
         document.getElementById('btn-menu-toggle').addEventListener('click', () => this.toggleMobileMenu());
         document.getElementById('mobile-overlay').addEventListener('click', () => this.closeAllSidebars());
-
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#context-menu') && !e.target.closest('.msg-wrapper')) {
                 this.els.ctxMenu.style.display = 'none';
@@ -834,29 +705,28 @@ class VXInterface {
             if (!e.target.closest('#channel-context-menu') && !e.target.closest('.channel-wrapper')) {
                 this.els.chCtxMenu.style.display = 'none';
             }
+            if (!e.target.closest('#admin-menu') && !e.target.closest('.msg-gear')) {
+                document.getElementById('admin-menu').style.display = 'none';
+            }
         });
-
         let micOn = true, camOn = true;
         document.getElementById('btn-toggle-mic').addEventListener('click', (e) => {
             const btn = e.currentTarget;
-            if(!VXApp.WebRTC.localStream) return;
+            if (!VXApp.WebRTC.localStream) return;
             micOn = !micOn;
             VXApp.WebRTC.localStream.getAudioTracks().forEach(t => t.enabled = micOn);
             btn.classList.toggle('muted', !micOn);
         });
-
         document.getElementById('btn-toggle-cam').addEventListener('click', (e) => {
             const btn = e.currentTarget;
-            if(!VXApp.WebRTC.localStream) return;
+            if (!VXApp.WebRTC.localStream) return;
             camOn = !camOn;
             VXApp.WebRTC.localStream.getVideoTracks().forEach(t => t.enabled = camOn);
             btn.classList.toggle('muted', !camOn);
         });
-
         document.getElementById('btn-end-call').addEventListener('click', () => VXApp.WebRTC.endCall());
         document.getElementById('btn-accept-call').addEventListener('click', () => VXApp.WebRTC.acceptCall());
         document.getElementById('btn-reject-call').addEventListener('click', () => VXApp.WebRTC.rejectCall());
-
         document.getElementById('btn-profile').addEventListener('click', () => {
             const nickInput = document.getElementById('profile-nick');
             nickInput.value = VXState.user.nickname;
@@ -870,11 +740,9 @@ class VXInterface {
             }
             this.openModal('modal-profile');
         });
-
         document.getElementById('btn-change-avatar').addEventListener('click', () => {
             document.getElementById('profile-avatar-input').click();
         });
-
         document.getElementById('profile-avatar-input').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file && file.type.startsWith('image/')) {
@@ -888,16 +756,13 @@ class VXInterface {
                 reader.readAsDataURL(file);
             }
         });
-
         document.getElementById('btn-save-profile').addEventListener('click', () => {
             const newNick = document.getElementById('profile-nick').value.trim();
             const oldNick = VXState.user.nickname;
             if (newNick.length >= 2) {
                 VXState.user.nickname = newNick;
                 localStorage.setItem('vx_nick', newNick);
-                if (oldNick !== newNick) {
-                    VXAccounts.changeNickname(oldNick, newNick);
-                }
+                if (oldNick !== newNick) { VXAccounts.changeNickname(oldNick, newNick); }
                 if (VXState.user.avatar) {
                     localStorage.setItem('vx_avatar', VXState.user.avatar);
                     VXAccounts.updateAvatar(newNick, VXState.user.avatar);
@@ -916,21 +781,19 @@ class VXInterface {
                 this.showToast("Ник слишком короткий", "error");
             }
         });
-
         document.getElementById('context-menu').addEventListener('click', (e) => {
             const action = e.target.closest('.ctx-item');
-            if(!action) return;
-            if(action.id === 'ctx-delete' && this.ctxTargetMsgId) {
+            if (!action) return;
+            if (action.id === 'ctx-delete' && this.ctxTargetMsgId) {
                 const el = document.getElementById(this.ctxTargetMsgId);
-                if(el) el.remove();
+                if (el) el.remove();
                 this.showToast("Удалено локально", "info");
             } else if (action.id === 'ctx-copy') {
                 const msgEl = document.getElementById(this.ctxTargetMsgId);
                 if (msgEl) {
                     const bubble = msgEl.querySelector('.msg-bubble');
                     if (bubble) {
-                        const text = bubble.innerText.replace(/🔒\s*/, '');
-                        navigator.clipboard?.writeText(text);
+                        navigator.clipboard?.writeText(bubble.innerText);
                         this.showToast("Текст скопирован", "info");
                     }
                 }
@@ -939,7 +802,6 @@ class VXInterface {
             }
             document.getElementById('context-menu').style.display = 'none';
         });
-
         this.els.chCtxMenu.addEventListener('click', (e) => {
             const action = e.target.closest('.ctx-item');
             if (!action) return;
@@ -948,33 +810,65 @@ class VXInterface {
             }
             this.els.chCtxMenu.style.display = 'none';
         });
-
+        // ===== КНОПКА "ВНИЗ" =====
+        const scrollBtn = document.getElementById('btn-scroll-down');
+        if (scrollBtn) {
+            this.els.flow.addEventListener('scroll', () => {
+                const gap = this.els.flow.scrollHeight - this.els.flow.scrollTop - this.els.flow.clientHeight;
+                scrollBtn.classList.toggle('show', gap > 300);
+            }, { passive: true });
+            scrollBtn.addEventListener('click', () => { this.els.flow.scrollTop = this.els.flow.scrollHeight; });
+        }
+        // ===== АДМИН-ШЕСТЕРЁНКА =====
+        this.els.flow.addEventListener('click', (e) => {
+            const gear = e.target.closest('.msg-gear');
+            if (!gear) return;
+            e.stopPropagation();
+            this.adminTarget = { uid: gear.dataset.uid, nick: gear.dataset.nick };
+            const menu = document.getElementById('admin-menu');
+            menu.style.display = 'flex';
+            const r = gear.getBoundingClientRect();
+            let x = Math.min(r.left, window.innerWidth - 200);
+            let y = r.bottom + 6;
+            if (y + 130 > window.innerHeight) y = r.top - 135;
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        });
+        document.getElementById('admin-menu').addEventListener('click', (e) => {
+            const item = e.target.closest('.ctx-item');
+            if (!item || !this.adminTarget) return;
+            const { uid, nick } = this.adminTarget;
+            if (item.id === 'adm-ban') {
+                VXApp.Network.transmit({ type: 'admin_action', action: 'ban', targetUid: uid, by: VXState.user.uid });
+                this.showToast(`Запрос на BAN: ${nick}`, 'warn');
+            } else if (item.id === 'adm-kick') {
+                VXApp.Network.transmit({ type: 'admin_action', action: 'kick', targetUid: uid, by: VXState.user.uid });
+                this.showToast(`Кик: ${nick}`, 'warn');
+            } else if (item.id === 'adm-copy') {
+                navigator.clipboard?.writeText(uid);
+                this.showToast('ID скопирован', 'info');
+            }
+            document.getElementById('admin-menu').style.display = 'none';
+        });
         // Свайп для мобильных
         let touchStartX = 0, touchStartY = 0;
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
             if (window.innerWidth > 850) return;
             if (document.body.classList.contains('menu-open')) return;
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            const dx = touchEndX - touchStartX;
-            const dy = touchEndY - touchStartY;
-            if (dx > 70 && Math.abs(dx) > Math.abs(dy)) {
-                this.toggleMobileMenu();
-            }
+            const dx = e.changedTouches[0].screenX - touchStartX;
+            const dy = e.changedTouches[0].screenY - touchStartY;
+            if (dx > 70 && Math.abs(dx) > Math.abs(dy)) { this.toggleMobileMenu(); }
         }, { passive: true });
-
         const donateBtn = document.getElementById('btn-donate');
         if (donateBtn) {
             donateBtn.addEventListener('click', () => {
                 window.open('https://boosty.to/virtual_xray_official/about', '_blank');
             });
         }
-
         // === АУТЕНТИФИКАЦИЯ ===
         const modeLoginBtn = document.getElementById('auth-mode-login');
         const modeRegBtn = document.getElementById('auth-mode-register');
@@ -982,38 +876,25 @@ class VXInterface {
         const submitBtn = document.getElementById('btn-auth-submit');
         const nickInput = document.getElementById('auth-nick-input');
         const passInput = document.getElementById('auth-pass-input');
-
         modeLoginBtn.addEventListener('click', () => {
             this.authMode = 'login';
             modeLoginBtn.classList.add('active');
             modeRegBtn.classList.remove('active');
-            modeLoginBtn.setAttribute('aria-selected', 'true');
-            modeRegBtn.setAttribute('aria-selected', 'false');
             authTitle.innerText = 'ИДЕНТИФИКАЦИЯ УЗЛА';
             submitBtn.innerText = 'ВОЙТИ';
         });
-
         modeRegBtn.addEventListener('click', () => {
             this.authMode = 'register';
             modeRegBtn.classList.add('active');
             modeLoginBtn.classList.remove('active');
-            modeRegBtn.setAttribute('aria-selected', 'true');
-            modeLoginBtn.setAttribute('aria-selected', 'false');
             authTitle.innerText = 'РЕГИСТРАЦИЯ НОВОГО УЗЛА';
             submitBtn.innerText = 'СОЗДАТЬ';
         });
-
         const handleAuth = async () => {
             const nick = nickInput.value.trim();
             const pass = passInput.value;
-            if (nick.length < 2) {
-                this.showToast("Позывной слишком короткий", "error");
-                return;
-            }
-            if (pass.length < 4) {
-                this.showToast("Пароль должен быть не менее 4 символов", "error");
-                return;
-            }
+            if (nick.length < 2) { this.showToast("Позывной слишком короткий", "error"); return; }
+            if (pass.length < 4) { this.showToast("Пароль должен быть не менее 4 символов", "error"); return; }
             if (this.authMode === 'register') {
                 const result = await VXAccounts.register(nick, pass);
                 if (result.success) {
@@ -1041,26 +922,18 @@ class VXInterface {
                 VXApp.startSequence();
             }
         };
-
         submitBtn.addEventListener('click', handleAuth);
-        passInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); handleAuth(); }
-        });
-        nickInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); passInput.focus(); }
-        });
-
+        passInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAuth(); } });
+        nickInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); passInput.focus(); } });
         if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
             Notification.requestPermission();
         }
     }
-
     showNotification(title, body, icon = null) {
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             new Notification(title, { body, icon, silent: false });
         }
     }
-
     async boot() {
         document.getElementById('modal-auth').classList.remove('active');
         document.getElementById('node-id-display').innerText = VXState.user.uid.toUpperCase();
@@ -1076,14 +949,13 @@ class VXInterface {
         this.renderChannels();
         await this.switchChannel(VXState.ui.activeChannelId);
     }
-
     setTheme(themeName) {
         document.body.setAttribute('data-theme', themeName);
         localStorage.setItem('vx_theme', themeName);
         VXState.user.theme = themeName;
-        document.getElementById('settings-theme').value = themeName;
+        const sel = document.getElementById('settings-theme');
+        if (sel) sel.value = themeName;
     }
-
     renderChannels() {
         this.els.chList.innerHTML = '';
         VXState.ui.channels.forEach(ch => {
@@ -1094,7 +966,6 @@ class VXInterface {
                 e.preventDefault();
                 this.ctxTargetChannelId = ch.id;
                 this.els.chCtxMenu.style.display = 'flex';
-                // Позиционирование с учётом границ экрана
                 const menuW = 180, menuH = 50;
                 let x = e.pageX, y = e.pageY;
                 if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 10;
@@ -1102,7 +973,6 @@ class VXInterface {
                 this.els.chCtxMenu.style.left = `${x}px`;
                 this.els.chCtxMenu.style.top = `${y}px`;
             });
-
             let pressTimer;
             wrapper.addEventListener('touchstart', (e) => {
                 pressTimer = setTimeout(() => {
@@ -1115,7 +985,6 @@ class VXInterface {
             });
             wrapper.addEventListener('touchend', () => clearTimeout(pressTimer));
             wrapper.addEventListener('touchmove', () => clearTimeout(pressTimer));
-
             const unreadCount = VXState.ui.unread[ch.id] || 0;
             const badgeHtml = unreadCount > 0 ? `<div class="ch-badge has-unread">${unreadCount}</div>` : '';
             const div = document.createElement('div');
@@ -1126,7 +995,6 @@ class VXInterface {
             this.els.chList.appendChild(wrapper);
         });
     }
-
     leaveChannel(channelId) {
         if (channelId === 'GLOBAL' || channelId === 'DEV_NULL') {
             this.showToast('Системные каналы нельзя покинуть', 'warn');
@@ -1135,30 +1003,22 @@ class VXInterface {
         VXState.ui.channels = VXState.ui.channels.filter(c => c.id !== channelId);
         const customChannels = VXState.ui.channels.filter(c => !c.isDefault);
         localStorage.setItem('vx_channels', JSON.stringify(customChannels));
-        if (VXState.ui.activeChannelId === channelId) {
-            this.switchChannel('GLOBAL');
-        } else {
-            this.renderChannels();
-        }
+        if (VXState.ui.activeChannelId === channelId) { this.switchChannel('GLOBAL'); }
+        else { this.renderChannels(); }
         this.showToast(`Вы покинули канал #${channelId}`, 'info');
     }
-
     openPrivateChat(targetUid, targetNick) {
         const channelId = `private_${targetUid}`;
         if (!VXState.ui.channels.find(c => c.id === channelId)) {
             VXState.ui.channels.push({
-                id: channelId,
-                name: `@${targetNick}`,
-                desc: `Личный диалог с ${targetNick}`,
-                isPrivate: true,
-                targetUid: targetUid
+                id: channelId, name: `@${targetNick}`,
+                desc: `Личный диалог с ${targetNick}`, isPrivate: true, targetUid: targetUid
             });
             localStorage.setItem('vx_channels', JSON.stringify(VXState.ui.channels.filter(c => !c.isDefault)));
         }
         this.switchChannel(channelId);
         this.closeAllSidebars();
     }
-
     async switchChannel(id) {
         VXState.ui.activeChannelId = id;
         VXState.ui.unread[id] = 0;
@@ -1166,24 +1026,24 @@ class VXInterface {
         document.getElementById('current-ch-name').innerText = ch.name;
         document.getElementById('current-ch-desc').innerText = ch.desc;
         document.getElementById('rp-desc').innerText = ch.desc;
-        this.els.input.placeholder = `Трансляция в #${ch.name}... (/help)`;
+        this.els.input.placeholder = (window.innerWidth <= 850 ? `#${ch.name}... ` : `Трансляция в #${ch.name}... `) + '(/help)';
         this.renderChannels();
         this.els.flow.innerHTML = '';
+        this.lastDateStr = null;
         this.appendSystem(`ПЕРЕХОД В СЕГМЕНТ [${ch.name}]`);
         const msgs = await VXApp.Database.getMessages(id);
-        if(msgs.length > 0) {
+        if (msgs.length > 0) {
             this.appendSystem(`ВОССТАНОВЛЕНИЕ ДАННЫХ ИЗ ИНДЕКСА (${msgs.length})`);
-            for(let msg of msgs) { await this.renderMessageHTML(msg, true); }
+            for (let msg of msgs) { await this.renderMessageHTML(msg, true); }
         }
     }
-
     async renderMessageHTML(data, skipSave = false) {
         if (!skipSave) {
             data.channelId = data.faction;
             await VXApp.Database.saveMessage(data);
         }
         if (data.faction !== VXState.ui.activeChannelId) {
-            if(!VXState.ui.unread[data.faction]) VXState.ui.unread[data.faction] = 0;
+            if (!VXState.ui.unread[data.faction]) VXState.ui.unread[data.faction] = 0;
             VXState.ui.unread[data.faction]++;
             this.renderChannels();
             if (document.hidden && data.uid !== VXState.user.uid) {
@@ -1196,11 +1056,7 @@ class VXInterface {
         const isMine = data.uid === VXState.user.uid;
         const timeStr = data.time || new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         let decryptedText = data.text;
-        if(data.isEncrypted) {
-            decryptedText = await VXCrypto.decrypt(data.text);
-        } else if (data.text) {
-            decryptedText = data.text;
-        }
+        if (data.isEncrypted) { decryptedText = await VXCrypto.decrypt(data.text); }
         const wrap = document.createElement('div');
         wrap.className = `msg-wrapper ${isMine ? 'mine' : ''}`;
         wrap.id = `msg-${data.id || Date.now()}`;
@@ -1215,7 +1071,6 @@ class VXInterface {
             this.els.ctxMenu.style.left = `${x}px`;
             this.els.ctxMenu.style.top = `${y}px`;
         });
-
         let mediaHtml = '';
         if (data.image) {
             mediaHtml = `<img src="${data.image}" class="msg-image" onclick="VXApp.UI.viewImage(this.src)" alt="Прикреплённое изображение">`;
@@ -1223,15 +1078,26 @@ class VXInterface {
             const audioUrl = `data:${data.mimeType || 'audio/webm'};base64,${data.audio}`;
             mediaHtml = `<audio class="msg-audio" controls src="${audioUrl}"></audio>`;
         }
-
         let safeText = decryptedText ? decryptedText.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
         safeText = safeText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--vx-info);text-decoration:none;">$1</a>');
         const lockIcon = data.isEncrypted ? `<span class="e2ee-lock" title="Шифрование AES">🔒</span>` : '';
-
+        const gearHtml = (VXApp.isAdmin() && !isMine) ? `<svg class="msg-gear" data-uid="${data.uid || ''}" data-nick="${(data.nickname || '').replace(/"/g, '&quot;')}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>` : '';
+        // ===== РАЗДЕЛИТЕЛЬ ДАТ =====
+        const msgDate = new Date(data.timestamp || Date.now());
+        const dateKey = msgDate.toDateString();
+        if (this.lastDateStr !== dateKey) {
+            this.lastDateStr = dateKey;
+            const divider = document.createElement('div');
+            divider.className = 'date-divider';
+            const today = new Date().toDateString();
+            const yesterday = new Date(Date.now() - 864e5).toDateString();
+            divider.textContent = dateKey === today ? 'СЕГОДНЯ' : (dateKey === yesterday ? 'ВЧЕРА' : msgDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }).toUpperCase());
+            this.els.flow.appendChild(divider);
+        }
         wrap.innerHTML = `
             <div class="msg-meta">
                 ${lockIcon}
-                <span class="msg-author" onclick="document.getElementById('search-node-id').value='${data.uid||''}'; VXApp.UI.openModal('modal-search-user');">${data.nickname}</span>
+                <span class="msg-author" onclick="document.getElementById('search-node-id').value='${data.uid || ''}'; VXApp.UI.openModal('modal-search-user');">${data.nickname}</span>${gearHtml}
                 <span class="msg-time">${timeStr}</span>
                 ${isMine ? '<span class="msg-status read">✓✓</span>' : ''}
             </div>
@@ -1240,7 +1106,6 @@ class VXInterface {
         this.els.flow.appendChild(wrap);
         this.scrollToBottom();
     }
-
     appendSystem(text) {
         const wrap = document.createElement('div');
         wrap.className = `msg-wrapper system`;
@@ -1248,25 +1113,23 @@ class VXInterface {
         this.els.flow.appendChild(wrap);
         this.scrollToBottom();
     }
-
     async handleCommandOrMessage() {
         if (this.isSending) return;
         const txt = this.els.input.value.trim();
         if (!txt) return;
-
         if (txt.startsWith('/')) {
             const cmd = txt.split(' ')[0].toLowerCase();
             if (cmd === '/clear') {
                 this.els.flow.innerHTML = '';
+                this.lastDateStr = null;
                 this.appendSystem('UI_CACHE_CLEARED');
             } else if (cmd === '/theme') {
                 const parts = txt.split(' ');
-                if(parts[1]) this.setTheme(parts[1]);
+                if (parts[1]) this.setTheme(parts[1]);
                 else this.appendSystem('Доступно: /theme dark | crimson | ocean');
             } else if (cmd === '/help') {
-                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /help');
+                this.appendSystem('КОМАНДЫ: /clear, /theme [name], /ai [запрос], /help');
             } else if (cmd === '/ai') {
-                // Открываем ИИ-окно вместо отправки в чат
                 const prompt = txt.substring(4).trim();
                 if (VXApp.AIInterface) {
                     VXApp.AIInterface.open();
@@ -1285,7 +1148,6 @@ class VXInterface {
             this.els.btnSend.classList.remove('active');
             return;
         }
-
         this.isSending = true;
         this.els.btnSend.classList.remove('active');
         try {
@@ -1312,14 +1174,12 @@ class VXInterface {
             this.showToast('Ошибка отправки', 'error');
         } finally {
             this.isSending = false;
-            if(window.innerWidth > 850) this.els.input.focus();
+            if (window.innerWidth > 850) this.els.input.focus();
         }
     }
-
     scrollToBottom() {
         setTimeout(() => { this.els.flow.scrollTop = this.els.flow.scrollHeight; }, 50);
     }
-
     toggleMobileMenu() {
         if (document.body.classList.contains('menu-open')) {
             document.body.classList.remove('menu-open');
@@ -1333,7 +1193,6 @@ class VXInterface {
             if (window.innerWidth <= 850) document.getElementById('mobile-overlay').style.display = 'block';
         }
     }
-
     toggleRightPanel() {
         const rightPanel = document.getElementById('right-panel');
         if (document.body.classList.contains('rp-open')) {
@@ -1348,7 +1207,6 @@ class VXInterface {
             rightPanel.classList.add('open');
         }
     }
-
     closeAllSidebars(event) {
         if (event) event.preventDefault();
         document.body.classList.remove('menu-open', 'rp-open');
@@ -1356,7 +1214,6 @@ class VXInterface {
         if (rightPanel) rightPanel.classList.remove('open');
         if (window.innerWidth <= 850) document.getElementById('mobile-overlay').style.display = 'none';
     }
-
     updateMembersList(members) {
         const container = document.getElementById('rp-members-list');
         const countSpan = document.getElementById('rp-member-count');
@@ -1388,7 +1245,7 @@ class VXInterface {
                 dmBtn.className = 'btn-modal btn-cancel';
                 dmBtn.style.marginLeft = 'auto';
                 dmBtn.style.padding = '4px 8px';
-                dmBtn.innerText = '✉️';
+                dmBtn.innerHTML = '<svg class="icon sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
                 dmBtn.title = 'Написать в личку';
                 dmBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -1402,36 +1259,27 @@ class VXInterface {
             container.innerHTML = '<div style="color:#666; text-align:center;">Нет активных узлов</div>';
         }
     }
-
     setNetworkStatus(isOnline) {
         const dot = document.getElementById('status-indicator');
         const ping = document.getElementById('ping-dot');
         const statusText = document.getElementById('server-status-text');
-        if (ping) {
-            ping.className = isOnline ? 'srv-ping connected' : 'srv-ping';
-        }
-        if (dot) {
-            dot.className = isOnline ? 'online-dot' : 'online-dot offline';
-        }
-        if (statusText) {
-            statusText.innerText = isOnline ? 'В СЕТИ' : 'ОБРЫВ СВЯЗИ';
-        }
+        if (ping) { ping.className = isOnline ? 'srv-ping connected' : 'srv-ping'; }
+        if (dot) { dot.className = isOnline ? 'online-dot' : 'online-dot offline'; }
+        if (statusText) { statusText.innerText = isOnline ? 'В СЕТИ' : 'ОБРЫВ СВЯЗИ'; }
     }
-
     openModal(id) { document.getElementById(id).classList.add('active'); }
     closeModal(id) { document.getElementById(id).classList.remove('active'); }
     viewImage(src) { document.getElementById('full-image').src = src; this.openModal('image-viewer'); }
-
     showToast(msg, type = 'info') {
         const c = document.getElementById('toast-container'), t = document.createElement('div');
         t.className = `toast ${type}`;
         let icon = '';
-        if(type==='info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
-        if(type==='error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-        if(type==='warn') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+        if (type === 'info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+        if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        if (type === 'warn') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
         t.innerHTML = `${icon} <span>${msg}</span>`;
         c.appendChild(t);
-        setTimeout(() => { t.style.animation = 'toastOut 0.3s forwards'; setTimeout(()=>t.remove(), 300); }, 3000);
+        setTimeout(() => { t.style.animation = 'toastOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3000);
     }
 }
 
@@ -1484,12 +1332,11 @@ class VXNetwork {
             setTimeout(() => this.fetchBeacon(), 5000);
         }
     }
-
     connect(url) {
         VXApp.UI.appendSystem(`ПОДКЛЮЧЕНИЕ К УЗЛУ: ${url}...`);
         try {
             VXState.network.socket = new WebSocket(url);
-        } catch(err) {
+        } catch (err) {
             this.handleDisconnect(); return;
         }
         VXState.network.socket.onopen = () => {
@@ -1536,7 +1383,7 @@ class VXNetwork {
                     }
                 } else if (data.type === "chat" || data.type === "voice_message") {
                     if (document.getElementById(`msg-${data.id}`)) return;
-                    if(!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    if (!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     VXApp.UI.renderMessageHTML(data, false);
                 } else if (data.type === "private_message") {
                     if (document.getElementById(`msg-${data.id}`)) return;
@@ -1545,17 +1392,14 @@ class VXNetwork {
                     if (!VXState.ui.channels.find(c => c.id === privateChannelId)) {
                         const senderNick = data.senderNick || data.nickname || senderUid;
                         VXState.ui.channels.push({
-                            id: privateChannelId,
-                            name: `@${senderNick}`,
-                            desc: `Личный диалог с ${senderNick}`,
-                            isPrivate: true,
-                            targetUid: senderUid
+                            id: privateChannelId, name: `@${senderNick}`,
+                            desc: `Личный диалог с ${senderNick}`, isPrivate: true, targetUid: senderUid
                         });
                         localStorage.setItem('vx_channels', JSON.stringify(VXState.ui.channels.filter(c => !c.isDefault)));
                         VXApp.UI.renderChannels();
                     }
                     data.faction = privateChannelId;
-                    if(!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    if (!data.time) data.time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     VXApp.UI.renderMessageHTML(data, false);
                 } else if (data.type === "auth_error") {
                     VXApp.UI.appendSystem(`[AUTH ERROR] ${data.text}`);
@@ -1568,6 +1412,7 @@ class VXNetwork {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
                     VXState.user.uid = data.uid;
                     VXState.user.nickname = data.nickname;
+                    VXState.user.role = data.role || 'user';
                     if (data.avatar) VXState.user.avatar = data.avatar;
                     localStorage.setItem('vx_uuid', data.uid);
                     localStorage.setItem('vx_nick', data.nickname);
@@ -1575,9 +1420,7 @@ class VXNetwork {
                     const accounts = VXAccounts.getAll();
                     accounts[data.nickname] = {
                         passwordHash: VXState._pendingHash || localStorage.getItem('vx_pass_hash'),
-                        uid: data.uid,
-                        avatar: data.avatar,
-                        createdAt: Date.now()
+                        uid: data.uid, avatar: data.avatar, createdAt: Date.now()
                     };
                     VXAccounts.saveAll(accounts);
                     const nodeIdDisplay = document.getElementById('node-id-display');
@@ -1596,7 +1439,6 @@ class VXNetwork {
         VXState.network.socket.onclose = () => this.handleDisconnect();
         VXState.network.socket.onerror = () => this.handleDisconnect();
     }
-
     handleDisconnect() {
         if (!VXState.network.isConnected && VXState.network.isReconnecting) return;
         VXState.network.isConnected = false;
@@ -1608,11 +1450,9 @@ class VXNetwork {
             this.fetchBeacon();
         }, 4000);
     }
-
     transmit(obj) {
         if (VXState.network.socket && VXState.network.socket.readyState === WebSocket.OPEN) {
-            const msg = JSON.stringify(obj);
-            VXState.network.socket.send(msg);
+            VXState.network.socket.send(JSON.stringify(obj));
         } else {
             VXApp.UI.showToast("Нет сети", "error");
         }
@@ -1633,7 +1473,7 @@ class VXCanvasBG {
     resize() {
         this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight;
         this.columns = Math.floor(this.canvas.width / this.fontSize); this.drops = [];
-        for(let x = 0; x < this.columns; x++) this.drops[x] = 1;
+        for (let x = 0; x < this.columns; x++) this.drops[x] = 1;
     }
     draw() {
         const style = getComputedStyle(document.body);
@@ -1641,10 +1481,10 @@ class VXCanvasBG {
         this.ctx.fillStyle = `rgba(0, 0, 0, 0.05)`;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = primaryColor; this.ctx.font = this.fontSize + 'px monospace';
-        for(let i = 0; i < this.drops.length; i++) {
+        for (let i = 0; i < this.drops.length; i++) {
             const text = this.letters[Math.floor(Math.random() * this.letters.length)];
             this.ctx.fillText(text, i * this.fontSize, this.drops[i] * this.fontSize);
-            if(this.drops[i] * this.fontSize > this.canvas.height && Math.random() > 0.975) { this.drops[i] = 0; }
+            if (this.drops[i] * this.fontSize > this.canvas.height && Math.random() > 0.975) { this.drops[i] = 0; }
             this.drops[i]++;
         }
     }
@@ -1661,12 +1501,15 @@ const VXApp = {
     SearchManager: new VXSearchManager(),
     AI: new VXLocalAI(),
     Effects: null,
+    isAdmin() {
+        return ['owner', 'admin', 'moder'].includes(VXState.user.role)
+            || (VXConfig.LOCAL_ADMINS || []).includes(VXState.user.uid);
+    },
     async init() {
         await this.Database.init();
         this.UI = new VXInterface();
         this.AIInterface = new VXAIInterface();
         this.Effects = new VXCanvasBG();
-
         const savedNick = localStorage.getItem('vx_nick');
         const savedUid = localStorage.getItem('vx_uuid');
         const savedPassHash = localStorage.getItem('vx_pass_hash');
@@ -1675,9 +1518,7 @@ const VXApp = {
             if (accounts[savedNick] && accounts[savedNick].uid === savedUid) {
                 VXState.user.nickname = savedNick;
                 VXState.user.uid = savedUid;
-                if (accounts[savedNick].avatar) {
-                    VXState.user.avatar = accounts[savedNick].avatar;
-                }
+                if (accounts[savedNick].avatar) { VXState.user.avatar = accounts[savedNick].avatar; }
                 VXState._pendingHash = localStorage.getItem('vx_pass_hash');
                 VXState._pendingAuthType = 'login';
                 await this.startSequence();
