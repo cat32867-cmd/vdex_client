@@ -942,17 +942,21 @@ class VXInterface {
         const nick = msgEl.querySelector('.msg-author')?.innerText || '';
         const text = (msgEl.querySelector('.msg-bubble')?.innerText || '').slice(0, 80);
         this.replyTarget = { nick, text };
+        const bar = document.getElementById('reply-bar');
+        if (!bar) return;
         document.getElementById('reply-bar-nick').innerText = nick;
         document.getElementById('reply-bar-preview').innerText = text;
-        document.getElementById('reply-bar').classList.add('active');
+        bar.classList.add('active');
         document.getElementById('msg-input').focus();
     }
     clearReply() {
         this.replyTarget = null;
-        document.getElementById('reply-bar').classList.remove('active');
+        const bar = document.getElementById('reply-bar');
+        if (bar) bar.classList.remove('active');
     }
     openReactionPicker() {
         const picker = document.getElementById('reaction-picker');
+        if (!picker) return;
         const r = this.els.ctxMenu.getBoundingClientRect();
         picker.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
         picker.style.top = (r.bottom + 6) + 'px';
