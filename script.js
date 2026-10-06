@@ -9,7 +9,6 @@ const VXConfig = {
     ],
     MAX_IMAGE_WIDTH: 1080,
     IMAGE_QUALITY: 0.7,
-    // ВПИШИ СЮДА СВОЙ node ID — включится шестерёнка модерации
     LOCAL_ADMINS: []
 };
 
@@ -21,8 +20,8 @@ const VXState = {
         avatar: localStorage.getItem('vx_avatar') || null,
         role: 'user'
     },
-    network: { socket: null, isConnected: false, isReconnecting: false, peerConnections: {} },
-    ui: { activeChannelId: 'GLOBAL', channels: [], unread: {} },
+    network: { socket: null, isConnected: false, isReconnecting: false },
+    ui: { activeChannelId: 'GLOBAL', channels: [], unread: {}, avatars: {} },
     crypto: { keyPair: null }
 };
 
@@ -574,6 +573,7 @@ class VXInterface {
                     document.getElementById('btn-profile').style.backgroundImage = '';
                     document.getElementById('btn-profile').innerText = newNick.charAt(0).toUpperCase();
                 }
+                VXState.ui.avatars[VXState.user.uid] = VXState.user.avatar;
                 this.showToast("Профиль обновлён", "info");
                 this.closeModal('modal-profile');
                 VXApp.Network.transmit({ type: "update_profile", nickname: newNick, avatar: VXState.user.avatar });
@@ -703,6 +703,7 @@ class VXInterface {
         } else {
             document.getElementById('btn-profile').innerText = VXState.user.nickname.charAt(0).toUpperCase();
         }
+        VXState.ui.avatars[VXState.user.uid] = VXState.user.avatar;
         this.setTheme(VXState.user.theme);
         const saved = JSON.parse(localStorage.getItem('vx_channels') || '[]');
         VXState.ui.channels = [...VXConfig.DEFAULT_CHANNELS, ...saved];
@@ -829,7 +830,10 @@ class VXInterface {
             divider.textContent = dateKey === today ? 'СЕГОДНЯ' : (dateKey === yesterday ? 'ВЧЕРА' : msgDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }).toUpperCase());
             this.els.flow.appendChild(divider);
         }
-        wrap.innerHTML = `<div class="msg-meta">${lockIcon}<span class="msg-author" onclick="document.getElementById('search-node-id').value='${data.uid || ''}'; VXApp.UI.openModal('modal-search-user');">${data.nickname}</span>${gearHtml}<span class="msg-time">${timeStr}</span>${isMine ? '<span class="msg-status read">✓✓</span>' : ''}</div><div class="msg-bubble">${replyHtml}${safeText}${mediaHtml}</div>`;
+        const av = data.avatar || VXState.ui.avatars[data.uid] || null;
+        const initial = (data.nickname || '?').charAt(0).toUpperCase();
+        const avatarHtml = `<div class="msg-avatar"${av ? ` style="background-image:url(${av})"` : ''}>${av ? '' : initial}</div>`;
+        wrap.innerHTML = `${avatarHtml}<div class="msg-body"><div class="msg-meta">${lockIcon}<span class="msg-author" onclick="document.getElementById('search-node-id').value='${data.uid || ''}'; VXApp.UI.openModal('modal-search-user');">${data.nickname}</span>${gearHtml}<span class="msg-time">${timeStr}</span>${isMine ? '<span class="msg-status read">✓✓</span>' : ''}</div><div class="msg-bubble">${replyHtml}${safeText}${mediaHtml}</div></div>`;
         this.renderReactionsRow(wrap, wrap.id);
         this.els.flow.appendChild(wrap);
         this.scrollToBottom();
@@ -999,14 +1003,18 @@ class VXInterface {
             row.appendChild(chip);
         });
     }
+    // ===== СПИСОК УЗЛОВ: только онлайн + кэш аватарок =====
     updateMembersList(members) {
         const container = document.getElementById('rp-members-list');
         const countSpan = document.getElementById('rp-member-count');
         if (!container) return;
+        members.forEach(m => { VXState.ui.avatars[m.uid] = m.avatar || null; });
+        const online = members.filter(m => m.online);
         container.innerHTML = '';
-        if (members && members.length) {
-            countSpan.innerText = members.length;
-            members.forEach(m => {
+        if (online.length) {
+            countSpan.innerText = online.length;
+            online.forEach(m => {
+                if (m.uid === VXState.user.uid) VXState.user.role = m.role || 'user';
                 const div = document.createElement('div');
                 div.className = 'member-item';
                 div.onclick = () => { document.getElementById('search-node-id').value = m.uid; this.openModal('modal-search-user'); };
@@ -1016,7 +1024,6 @@ class VXInterface {
                 else avatar.innerText = (m.nickname || '?').charAt(0).toUpperCase();
                 const dot = document.createElement('div');
                 dot.className = 'member-dot';
-                if (m.online === false) dot.style.backgroundColor = 'var(--vx-danger)';
                 avatar.appendChild(dot);
                 const info = document.createElement('div');
                 info.className = 'member-info';
@@ -1035,7 +1042,7 @@ class VXInterface {
             });
         } else {
             countSpan.innerText = '0';
-            container.innerHTML = '<div style="color:#666;text-align:center;">Нет активных узлов</div>';
+            container.innerHTML = '<div style="color:#666;text-align:center;">Сейчас никого нет в сети</div>';
         }
     }
     setNetworkStatus(isOnline) {
@@ -1171,6 +1178,7 @@ class VXNetwork {
                     VXState.user.nickname = data.nickname;
                     VXState.user.role = data.role || 'user';
                     if (data.avatar) VXState.user.avatar = data.avatar;
+                    VXState.ui.avatars[data.uid] = data.avatar || null;
                     localStorage.setItem('vx_uuid', data.uid);
                     localStorage.setItem('vx_nick', data.nickname);
                     if (data.avatar) localStorage.setItem('vx_avatar', data.avatar);
