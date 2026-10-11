@@ -1,6 +1,6 @@
 // ====================== VX CORE ======================
 const VXConfig = {
-    API_BEACON: 'https://api.github.com/repos/cat32867-cmd/vdex-data/contents/server.txt',
+    API_BEACON: 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/server.txt',
     DB_NAME: 'VX_DataStore',
     DB_VERSION: 1,
     DEFAULT_CHANNELS: [
