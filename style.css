@@ -771,3 +771,12 @@ select.form-input {
 .msg-wrapper.mine .msg-body { align-items: flex-end; }
 #reply-bar { display: none; align-items: center; gap: 10px; background: #0d0d0d; border: 1px solid #222; border-left: 3px solid var(--vx-info); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
 #reply-bar.active { display: flex; }
+/* ===== АВАТАРКИ В СПИСКЕ КАНАЛОВ ===== */
+.ch-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background-color: #222; border: 1px solid #333;
+    color: #888; font-family: var(--font-mono); font-weight: bold; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; background-size: cover; background-position: center;
+}
+.channel-item.active .ch-avatar { border-color: var(--vx-primary); box-shadow: 0 0 8px var(--vx-primary-dim); }
