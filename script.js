@@ -747,7 +747,7 @@ class VXInterface {
             const div = document.createElement('div');
             div.className = `channel-item ${ch.id === VXState.ui.activeChannelId ? 'active' : ''}`;
             div.onclick = () => { this.switchChannel(ch.id); if (window.innerWidth <= 850) this.closeAllSidebars(); };
-            div.innerHTML = `<span class="ch-hash">#</span><span class="ch-name">${ch.name}</span>${unread > 0 ? `<div class="ch-badge has-unread">${unread}</div>` : ''}`;
+            const isPriv = ch.isPrivate || ch.id.startsWith('private_'); const avUrl = isPriv ? (VXState.ui.avatars[ch.targetUid] || null) : null; const avHtml = isPriv     ? `<span class="ch-avatar"${avUrl ? ` style="background-image:url(${avUrl})"` : ''}>${avUrl ? '' : ch.name.replace('@', '').charAt(0).toUpperCase()}</span>`     : `<span class="ch-hash">#</span>`; div.innerHTML = `${avHtml}<span class="ch-name">${ch.name}</span>${unread > 0 ? `<div class="ch-badge has-unread">${unread}</div>` : ''}`;
             wrapper.appendChild(div);
             this.els.chList.appendChild(wrapper);
         });
