@@ -20,7 +20,7 @@ const VXState = {
         avatar: localStorage.getItem('vx_avatar') || null,
         role: 'user'
     },
-    network: { socket: null, isConnected: false, isReconnecting: false },
+    network: { socket: null, isConnected: false, isReconnecting: false, outbox: [] },
     ui: { activeChannelId: 'GLOBAL', channels: [], unread: {}, avatars: {} },
     crypto: { keyPair: null }
 };
@@ -182,10 +182,7 @@ class VXWebRTCManager {
             const v = document.getElementById('local-video');
             if (v) v.srcObject = stream;
             return true;
-        } catch (e) {
-            VXApp.UI.showToast("Нет доступа к камере или микрофону", "error");
-            return false;
-        }
+        } catch (e) { VXApp.UI.showToast("Нет доступа к камере или микрофону", "error"); return false; }
     }
     createPeerConnection() {
         this.peerConnection = new RTCPeerConnection(this.config);
@@ -744,10 +741,15 @@ class VXInterface {
             wrapper.addEventListener('touchend', () => clearTimeout(pressTimer));
             wrapper.addEventListener('touchmove', () => clearTimeout(pressTimer));
             const unread = VXState.ui.unread[ch.id] || 0;
+            const isPriv = ch.isPrivate || ch.id.startsWith('private_');
+            const avUrl = isPriv ? (VXState.ui.avatars[ch.targetUid] || null) : null;
+            const avHtml = isPriv
+                ? `<span class="ch-avatar"${avUrl ? ` style="background-image:url(${avUrl})"` : ''}>${avUrl ? '' : ch.name.replace('@', '').charAt(0).toUpperCase()}</span>`
+                : `<span class="ch-hash">#</span>`;
             const div = document.createElement('div');
             div.className = `channel-item ${ch.id === VXState.ui.activeChannelId ? 'active' : ''}`;
             div.onclick = () => { this.switchChannel(ch.id); if (window.innerWidth <= 850) this.closeAllSidebars(); };
-            const isPriv = ch.isPrivate || ch.id.startsWith('private_'); const avUrl = isPriv ? (VXState.ui.avatars[ch.targetUid] || null) : null; const avHtml = isPriv     ? `<span class="ch-avatar"${avUrl ? ` style="background-image:url(${avUrl})"` : ''}>${avUrl ? '' : ch.name.replace('@', '').charAt(0).toUpperCase()}</span>`     : `<span class="ch-hash">#</span>`; div.innerHTML = `${avHtml}<span class="ch-name">${ch.name}</span>${unread > 0 ? `<div class="ch-badge has-unread">${unread}</div>` : ''}`;
+            div.innerHTML = `${avHtml}<span class="ch-name">${ch.name}</span>${unread > 0 ? `<div class="ch-badge has-unread">${unread}</div>` : ''}`;
             wrapper.appendChild(div);
             this.els.chList.appendChild(wrapper);
         });
@@ -1064,9 +1066,9 @@ class VXInterface {
         const c = document.getElementById('toast-container'), t = document.createElement('div');
         t.className = `toast ${type}`;
         let icon = '';
-        if (type === 'info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
-        if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
-        if (type === 'warn') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+        if (type === 'info') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+        if (type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        if (type === 'warn') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
         t.innerHTML = `${icon} <span>${msg}</span>`;
         c.appendChild(t);
         setTimeout(() => { t.style.animation = 'toastOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3000);
@@ -1108,7 +1110,7 @@ class VXNetwork {
     async fetchBeacon() {
         VXApp.UI.appendSystem("ЗАПРОС КООРДИНАТ СЕРВЕРА...");
         try {
-            const res = await fetch(VXConfig.API_BEACON, { headers: { 'Accept': 'application/vnd.github.v3.raw' } });
+            const res = await fetch(VXConfig.API_BEACON + '?cb=' + Date.now(), { headers: { 'Accept': 'application/vnd.github.v3.raw', 'Cache-Control': 'no-cache' } });
             if (!res.ok) throw new Error("HTTP " + res.status);
             let wsUrl = (await res.text()).trim();
             if (!wsUrl.startsWith('ws')) wsUrl = 'wss://' + wsUrl;
@@ -1124,6 +1126,8 @@ class VXNetwork {
         catch (err) { this.handleDisconnect(); return; }
         VXState.network.socket.onopen = () => {
             VXState.network.isConnected = true;
+            this._retry = 0;
+            while (VXState.network.outbox.length) { this.transmit(VXState.network.outbox.shift()); }
             setTimeout(() => VXApp.UI.setNetworkStatus(true), 10);
             VXApp.UI.showToast("Связь установлена", "info");
             VXApp.UI.appendSystem("HANDSHAKE УСПЕШЕН.");
@@ -1201,16 +1205,24 @@ class VXNetwork {
         VXState.network.socket.onerror = () => this.handleDisconnect();
     }
     handleDisconnect() {
-        if (!VXState.network.isConnected && VXState.network.isReconnecting) return;
+        if (VXState.network.isReconnecting) return;
         VXState.network.isConnected = false;
         VXState.network.isReconnecting = true;
         VXApp.UI.setNetworkStatus(false);
-        VXApp.UI.appendSystem("КРИТИЧЕСКАЯ ОШИБКА: ПОТЕРЯ СВЯЗИ. ПЕРЕЗАПУСК...");
-        setTimeout(() => { VXState.network.isReconnecting = false; this.fetchBeacon(); }, 4000);
+        if (!this._retry) this._retry = 0;
+        this._retry = Math.min(this._retry + 1, 6);
+        if (this._retry === 1) VXApp.UI.appendSystem("ПОТЕРЯ СВЯЗИ. Переподключение...");
+        setTimeout(() => { VXState.network.isReconnecting = false; this.fetchBeacon(); }, 2000 * this._retry);
     }
     transmit(obj) {
-        if (VXState.network.socket && VXState.network.socket.readyState === WebSocket.OPEN) VXState.network.socket.send(JSON.stringify(obj));
-        else VXApp.UI.showToast("Нет сети", "error");
+        if (VXState.network.socket && VXState.network.socket.readyState === WebSocket.OPEN) {
+            VXState.network.socket.send(JSON.stringify(obj));
+        } else if (obj.type === 'chat' || obj.type === 'private_message' || obj.type === 'voice_message') {
+            VXState.network.outbox.push(obj);
+            VXApp.UI.showToast("Нет связи — сообщение в очереди, уйдёт при подключении", "warn");
+        } else {
+            VXApp.UI.showToast("Нет сети", "error");
+        }
     }
 }
 
