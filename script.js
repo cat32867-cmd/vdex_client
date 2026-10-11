@@ -1110,7 +1110,7 @@ class VXNetwork {
     async fetchBeacon() {
         VXApp.UI.appendSystem("ЗАПРОС КООРДИНАТ СЕРВЕРА...");
         try {
-            const res = await fetch(VXConfig.API_BEACON + '?cb=' + Date.now(), { headers: { 'Accept': 'application/vnd.github.v3.raw', 'Cache-Control': 'no-cache' } });
+            const res = await fetch(VXConfig.API_BEACON + '?cb=' + Date.now());
             if (!res.ok) throw new Error("HTTP " + res.status);
             let wsUrl = (await res.text()).trim();
             if (!wsUrl.startsWith('ws')) wsUrl = 'wss://' + wsUrl;
