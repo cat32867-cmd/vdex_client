@@ -778,7 +778,7 @@ class VXInterface {
         document.getElementById('current-ch-name').innerText = ch.name;
         document.getElementById('current-ch-desc').innerText = ch.desc;
         document.getElementById('rp-desc').innerText = ch.desc;
-        this.els.input.placeholder = (window.innerWidth <= 850 ? `#${ch.name}... ` : `Трансляция в #${ch.name}... `) + '(/help)';
+        this.els.input.placeholder = (window.innerWidth <= 850 ? `#${ch.name}...` : `Трансляция в #${ch.name}...`) + '(/help)';
         this.renderChannels();
         this.els.flow.innerHTML = '';
         this.lastDateStr = null;
@@ -816,7 +816,7 @@ class VXInterface {
         let mediaHtml = '';
         if (data.image) mediaHtml = `<img src="${data.image}" class="msg-image" onclick="VXApp.UI.viewImage(this.src)" alt="Фото">`;
         else if (data.audio) mediaHtml = `<audio class="msg-audio" controls src="data:${data.mimeType || 'audio/webm'};base64,${data.audio}"></audio>`;
-        let safeText = decryptedText ? decryptedText.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+        let safeText = decryptedText ? decryptedText.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
         safeText = safeText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--vx-info);text-decoration:none;">$1</a>');
         const lockIcon = data.isEncrypted ? '<span class="e2ee-lock">🔒</span>' : '';
         const replyHtml = data.replyTo ? `<div class="reply-quote"><div class="reply-quote-nick">${(data.replyTo.nick || '').replace(/</g, '&lt;')}</div><div class="reply-quote-text">${(data.replyTo.text || '').replace(/</g, '&lt;')}</div></div>` : '';
@@ -1122,12 +1122,18 @@ class VXNetwork {
     }
     connect(url) {
         VXApp.UI.appendSystem(`ПОДКЛЮЧЕНИЕ К УЗЛУ: ${url}...`);
-        try { VXState.network.socket = new WebSocket(url); }
+        const oldSock = VXState.network.socket;
+        if (oldSock) {
+            oldSock.onopen = null; oldSock.onmessage = null; oldSock.onclose = null; oldSock.onerror = null;
+            try { oldSock.close(); } catch (e) {}
+        }
+        let sock;
+        try { sock = new WebSocket(url); VXState.network.socket = sock; }
         catch (err) { this.handleDisconnect(); return; }
-        VXState.network.socket.onopen = () => {
+        sock.onopen = () => {
+            if (VXState.network.socket !== sock) return;
             VXState.network.isConnected = true;
-            this._retry = 0;
-            while (VXState.network.outbox.length) { this.transmit(VXState.network.outbox.shift()); }
+            setTimeout(() => { if (VXState.network.isConnected) this._retry = 0; }, 10000);
             setTimeout(() => VXApp.UI.setNetworkStatus(true), 10);
             VXApp.UI.showToast("Связь установлена", "info");
             VXApp.UI.appendSystem("HANDSHAKE УСПЕШЕН.");
@@ -1136,8 +1142,9 @@ class VXNetwork {
             delete VXState._pendingHash;
             delete VXState._pendingAuthType;
             this.transmit({ type: authType, uid: VXState.user.uid, nickname: VXState.user.nickname, avatar: VXState.user.avatar, password: passwordHash });
+            while (VXState.network.outbox.length) { this.transmit(VXState.network.outbox.shift()); }
         };
-        VXState.network.socket.onmessage = (e) => {
+        sock.onmessage = (e) => {
             try {
                 const data = JSON.parse(e.data);
                 if (data.type === "call_offer" && data.targetUid === VXState.user.uid) VXApp.WebRTC.handleIncomingOffer(data);
@@ -1201,8 +1208,8 @@ class VXNetwork {
                 else if (data.type === "profile_updated") VXApp.UI.showToast("Профиль обновлён", "info");
             } catch (err) { VXApp.UI.appendSystem(`SERVER: ${e.data}`); }
         };
-        VXState.network.socket.onclose = () => this.handleDisconnect();
-        VXState.network.socket.onerror = () => this.handleDisconnect();
+        sock.onclose = () => { if (VXState.network.socket === sock) this.handleDisconnect(); };
+        sock.onerror = () => { if (VXState.network.socket === sock) this.handleDisconnect(); };
     }
     handleDisconnect() {
         if (VXState.network.isReconnecting) return;
