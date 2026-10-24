@@ -173,6 +173,7 @@ class VXWebRTCManager {
     constructor() {
         this.localStream = null; this.peerConnection = null;
         this.targetNode = null; this.pendingOffer = null;
+        this._iceGrace = null;
         this.config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     }
     async setupLocalMedia() {
@@ -196,7 +197,15 @@ class VXWebRTCManager {
         };
         this.peerConnection.oniceconnectionstatechange = () => {
             const s = this.peerConnection.iceConnectionState;
-            if (s === 'disconnected' || s === 'failed') this.endCall();
+            if (s === 'failed' || s === 'closed') { this.endCall(); return; }
+            if (s === 'disconnected') {
+                clearTimeout(this._iceGrace);
+                this._iceGrace = setTimeout(() => {
+                    if (this.peerConnection && this.peerConnection.iceConnectionState === 'disconnected') this.endCall();
+                }, 7000);
+            } else {
+                clearTimeout(this._iceGrace);
+            }
         };
     }
     async initiateCall() {
@@ -245,6 +254,7 @@ class VXWebRTCManager {
         this.targetNode = null; this.pendingOffer = null;
     }
     endCall() {
+        clearTimeout(this._iceGrace);
         if (this.peerConnection) { this.peerConnection.close(); this.peerConnection = null; }
         if (this.localStream) { this.localStream.getTracks().forEach(t => t.stop()); this.localStream = null; }
         document.getElementById('webrtc-container').classList.remove('active');
