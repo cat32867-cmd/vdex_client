@@ -1,7 +1,7 @@
 // ===================== VDEX PRESENCE FIX =====================
 (function () {
-    const HEARTBEAT = 20000;
-    const FRESH = 75000;
+    const HEARTBEAT = 10000;
+    const FRESH = HEARTBEAT * 4 + 5000;
     let lastServer = [];
 
     const cache = () => (VXState.ui.presenceCache = VXState.ui.presenceCache || {});
@@ -39,12 +39,15 @@
     };
 
     // сердцебиение: объявляем о себе
+    let lastAvatarSent = null;
     setInterval(() => {
         const s = VXState.network.socket;
         if (!s || s.readyState !== WebSocket.OPEN || !myUid()) return;
         touch(myUid(), VXState.user.nickname, VXState.user.avatar, true);
         cache()[myUid()].serverOnline = true;
-        s.send(JSON.stringify({ type: 'presence', uid: myUid(), nick: VXState.user.nickname, avatar: VXState.user.avatar }));
+        const pkt = { type: 'presence', uid: myUid(), nick: VXState.user.nickname };
+        if (VXState.user.avatar !== lastAvatarSent) { pkt.avatar = VXState.user.avatar; lastAvatarSent = VXState.user.avatar; }
+        s.send(JSON.stringify(pkt));
     }, HEARTBEAT);
 
     // чистим протухших
