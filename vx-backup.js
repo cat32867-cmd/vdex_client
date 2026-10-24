@@ -1,8 +1,22 @@
 // ===================== VDEX BACKUP & RESTORE =====================
 (function () {
-    const qrLib = document.createElement('script');
-    qrLib.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
-    document.head.appendChild(qrLib);
+function loadQr(cb) {
+        const urls = [
+            'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js',
+            'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'
+        ];
+        let i = 0;
+        const next = () => {
+            if (i >= urls.length) { cb(false); return; }
+            const s = document.createElement('script');
+            s.src = urls[i++];
+            s.onload = () => cb(true);
+            s.onerror = next;
+            document.head.appendChild(s);
+        };
+        next();
+    }
 
     const style = document.createElement('style');
     style.textContent = `
@@ -32,7 +46,7 @@
 
     // ---------- ключ восстановления ----------
     function makeKey() {
-        const obj = { v: 1, nick: VXState.user.nickname, uid: VXState.user.uid, hash: localStorage.getItem('vx_pass_hash'), avatar: localStorage.getItem('vx_avatar') || null };
+    const obj = { v: 1, nick: VXState.user.nickname, uid: VXState.user.uid, hash: localStorage.getItem('vx_pass_hash') };
         return 'VXKEY:' + btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
     }
     function applyKey(code) {
@@ -71,14 +85,15 @@
         const key = makeKey();
         document.getElementById('vxb-keytext').value = key;
         const qrBox = document.getElementById('vxb-qr');
-        qrBox.innerHTML = '';
-        if (window.qrcode) {
+        qrBox.innerHTML = '<span style="color:#333;font-size:10px;">Загрузка QR...</span>';
+        loadQr((ok) => {
+            if (!ok || !window.qrcode) { qrBox.innerHTML = '<span style="color:#333;font-size:10px;">QR-библиотека не загрузилась — используй копирование или файл</span>'; return; }
             try {
                 const qr = window.qrcode(0, 'M');
                 qr.addData(key); qr.make();
                 qrBox.innerHTML = qr.createImgTag(4, 8);
-            } catch (e) { qrBox.innerHTML = '<span style="color:#333;font-size:10px;">QR недоступен</span>'; }
-        }
+            } catch (e) { qrBox.innerHTML = '<span style="color:#333;font-size:10px;">Ключ слишком длинный для QR</span>'; }
+        });
         keyModal.classList.add('active');
     }
     function showRestore() {
