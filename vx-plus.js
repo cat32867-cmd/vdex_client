@@ -75,20 +75,65 @@
         div.innerHTML = avHtml + '<span class="ch-name">' + ch.name + '</span>' + (unread > 0 ? '<div class="ch-badge has-unread">' + unread + '</div>' : '');
         wrapper.appendChild(div);
         return wrapper;
+    }// ---------- список: вкладки КАНАЛЫ / ЧАТЫ ----------
+    const tabsStyle = document.createElement('style');
+    tabsStyle.textContent = `
+#vxp-list-tabs { display: flex; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid #1a1a1a; background: #050505; }
+.vxp-ltab { flex: 1; padding: 10px 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; color: #666; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; text-transform: uppercase; }
+.vxp-ltab.active { color: var(--vx-primary); border-bottom-color: var(--vx-primary); background: #0d0d0d; }
+.vxp-ltab.has-un { color: var(--vx-warn); }
+.vxp-ltab .cnt { font-size: 9px; color: #555; margin-left: 4px; }
+`;
+    document.head.appendChild(tabsStyle);
+
+    VXState.ui.listTab = VXState.ui.listTab || 'channels';
+
+    function ensureTabs(self, chans, privs) {
+        let bar = document.getElementById('vxp-list-tabs');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'vxp-list-tabs';
+            self.els.chList.parentNode.insertBefore(bar, self.els.chList);
+            bar.innerHTML = '<button class="vxp-ltab" data-t="channels">Каналы<span class="cnt"></span></button><button class="vxp-ltab" data-t="chats">Чаты<span class="cnt"></span></button>';
+            bar.querySelectorAll('.vxp-ltab').forEach(b => b.onclick = () => {
+                VXState.ui.listTab = b.dataset.t;
+                self.renderChannels();
+            });
+        }
+        const un = (arr) => arr.reduce((s, c) => s + (VXState.ui.unread[c.id] || 0), 0);
+        bar.querySelectorAll('.vxp-ltab').forEach(b => {
+            const active = b.dataset.t === VXState.ui.listTab;
+            b.classList.toggle('active', active);
+            const pool = b.dataset.t === 'chats' ? privs : chans;
+            b.classList.toggle('has-un', !active && un(pool) > 0);
+        });
+        bar.querySelector('[data-t="channels"] .cnt').textContent = '(' + chans.length + ')';
+        bar.querySelector('[data-t="chats"] .cnt').textContent = '(' + privs.length + ')';
     }
+
     VXInterface.prototype.renderChannels = function () {
         this.els.chList.innerHTML = '';
         const chans = VXState.ui.channels.filter(c => !(c.isPrivate || c.id.startsWith('private_')));
         const privs = VXState.ui.channels.filter(c => c.isPrivate || c.id.startsWith('private_'));
-        const header = (t, n) => { const h = document.createElement('div'); h.className = 'ch-section'; h.innerHTML = '<span>' + t + '</span><span>' + n + '</span>'; return h; };
-        if (chans.length) {
-            this.els.chList.appendChild(header('Каналы', chans.length));
-            chans.forEach(ch => this.els.chList.appendChild(channelItem(this, ch)));
+        ensureTabs(this, chans, privs);
+        const pool = VXState.ui.listTab === 'chats' ? privs : chans;
+        if (!pool.length) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'padding:24px 16px;text-align:center;color:#555;font-size:11px;font-family:var(--font-mono);line-height:1.6;';
+            empty.textContent = VXState.ui.listTab === 'chats'
+                ? 'Пока нет чатов. Найди собеседника через поиск или список узлов.'
+                : 'Нет каналов. Создай свой кнопкой «Новый узел».';
+            this.els.chList.appendChild(empty);
+            return;
         }
-        if (privs.length) {
-            this.els.chList.appendChild(header('Чаты', privs.length));
-            privs.forEach(ch => this.els.chList.appendChild(channelItem(this, ch)));
-        }
+        pool.forEach(ch => this.els.chList.appendChild(channelItem(this, ch)));
+    };
+
+    // открываешь личку — вкладка сама переключается на «Чаты»
+    const origSwitchTab = VXInterface.prototype.switchChannel;
+    VXInterface.prototype.switchChannel = function (id) {
+        VXState.ui.listTab = String(id).startsWith('private_') ? 'chats' : 'channels';
+        return origSwitchTab.call(this, id);
     };
 
     // ---------- кнопка реакций на сообщении ----------
