@@ -1,6 +1,16 @@
 // ===================== VDEX VOICE CHANNELS =====================
 (function () {
-    const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const ICE = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+        ],
+        iceCandidatePoolSize: 8
+    };
     const DEFAULT_ROOMS = ['VOICE_LOUNGE', 'DEV_TALK'];
     const VC = { room: null, pcs: {}, senders: {}, remote: {}, roster: {}, local: null, camStream: null, screenStream: null, micOn: true, camOn: false, screenOn: false };
 
@@ -51,6 +61,18 @@
                 document.body.appendChild(a);
             }
             VC.remote[uid].addTrack(ev.track);
+            renderTiles();
+        };
+        pc.oniceconnectionstatechange = () => {
+            const s = pc.iceConnectionState;
+            if (VC.roster[uid]) {
+                VC.roster[uid].conn = (s === 'connected' || s === 'completed') ? 'ok' : (s === 'failed' ? 'fail' : 'wait');
+                if (s === 'failed' && !(VC.restarts = VC.restarts || {})[uid]) {
+                    VC.restarts[uid] = true;
+                    try { pc.restartIce(); } catch (e) {}
+                    setTimeout(() => { VC.restarts[uid] = false; }, 5000);
+                }
+            }
             renderTiles();
         };
         return pc;
@@ -260,6 +282,8 @@
             const badges = document.createElement('div'); badges.className = 'vc-badges';
             if (!r.mic) badges.innerHTML += '<span class="vc-flag">MIC OFF</span>';
             if (r.screen) badges.innerHTML += '<span class="vc-flag ok">SCREEN</span>';
+            if (uid !== myUid() && r.conn === 'wait') badges.innerHTML += '<span class="vc-flag">LINK...</span>';
+            if (uid !== myUid() && r.conn === 'fail') badges.innerHTML += '<span class="vc-flag">NO LINK</span>';
             const nick = document.createElement('div'); nick.className = 'vc-nick';
             nick.textContent = r.nick + (uid === myUid() ? ' (ты)' : '');
             tile.appendChild(badges); tile.appendChild(nick);
