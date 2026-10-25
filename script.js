@@ -926,7 +926,6 @@ class VXInterface {
         document.getElementById('right-panel').classList.remove('open');
         if (window.innerWidth <= 850) document.getElementById('mobile-overlay').style.display = 'none';
     }
-    // ===== ОТВЕТЫ И РЕАКЦИИ =====
     initReplyUI() {
         if (this._replyUIInit) return;
         this._replyUIInit = true;
@@ -1019,7 +1018,6 @@ class VXInterface {
             row.appendChild(chip);
         });
     }
-    // ===== СПИСОК УЗЛОВ: только онлайн + кэш аватарок =====
     updateMembersList(members) {
         const container = document.getElementById('rp-members-list');
         const countSpan = document.getElementById('rp-member-count');
@@ -1310,8 +1308,21 @@ const VXApp = {
                 await this.startSequence();
                 return;
             } else {
-                localStorage.removeItem('vx_nick'); localStorage.removeItem('vx_uuid');
-                localStorage.removeItem('vx_pass_hash'); localStorage.removeItem('vx_avatar');
+                // Восстанавливаем запись вместо стирания
+                console.log('[VX] Восстановление записи в vx_accounts для', savedNick);
+                accounts[savedNick] = {
+                    passwordHash: savedPassHash,
+                    uid: savedUid,
+                    avatar: localStorage.getItem('vx_avatar'),
+                    createdAt: Date.now()
+                };
+                VXAccounts.saveAll(accounts);
+                VXState.user.nickname = savedNick;
+                VXState.user.uid = savedUid;
+                VXState._pendingHash = savedPassHash;
+                VXState._pendingAuthType = 'login';
+                await this.startSequence();
+                return;
             }
         }
         document.getElementById('modal-auth').classList.add('active');
