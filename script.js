@@ -1,4 +1,4 @@
-// ====================== VX CORE v3.2 ======================
+// ====================== VX CORE v3.3 ======================
 const VXConfig = {
     API_BEACON: 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/server.txt',
     DB_NAME: 'VX_DataStore',
