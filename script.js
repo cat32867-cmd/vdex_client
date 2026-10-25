@@ -1,4 +1,4 @@
-// ====================== VX CORE ======================
+// ====================== VX CORE v3.2 ======================
 const VXConfig = {
     API_BEACON: 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/server.txt',
     DB_NAME: 'VX_DataStore',
@@ -1191,9 +1191,7 @@ class VXNetwork {
                     VXApp.UI.renderMessageHTML(data, false);
                 }
                 else if (data.type === "auth_error") {
-                    // ВАЖНО: локальная сессия НЕ трогается. Сервер может не принять ключ,
-                    // но узел остаётся рабочим офлайн. Стираем креды только вручную (выход/формат).
-                    VXApp.UI.appendSystem(`⚠ СЕРВЕР ОТВЕРГ КЛЮЧ ДОСТУПА: ${data.text || 'без причины'}. Локальная сессия узла СОХРАНЕНА.`);
+                    VXApp.UI.appendSystem(`⚠ СЕРВЕР ОТВЕРГ КЛЮЧ: ${data.text || 'без причины'}. Локальная сессия СОХРАНЕНА.`);
                     if (!this._authWarned) {
                         this._authWarned = true;
                         VXApp.UI.showToast('Сервер не принял ключ — сеть недоступна, но узел работает локально', 'warn');
