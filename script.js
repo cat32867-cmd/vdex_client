@@ -1299,31 +1299,17 @@ const VXApp = {
         const savedPassHash = localStorage.getItem('vx_pass_hash');
         if (savedNick && savedUid && savedPassHash) {
             const accounts = VXAccounts.getAll();
-            if (accounts[savedNick] && accounts[savedNick].uid === savedUid) {
-                VXState.user.nickname = savedNick;
-                VXState.user.uid = savedUid;
-                if (accounts[savedNick].avatar) VXState.user.avatar = accounts[savedNick].avatar;
-                VXState._pendingHash = savedPassHash;
-                VXState._pendingAuthType = 'login';
-                await this.startSequence();
-                return;
-            } else {
-                // Восстанавливаем запись вместо стирания
-                console.log('[VX] Восстановление записи в vx_accounts для', savedNick);
-                accounts[savedNick] = {
-                    passwordHash: savedPassHash,
-                    uid: savedUid,
-                    avatar: localStorage.getItem('vx_avatar'),
-                    createdAt: Date.now()
-                };
+            if (!accounts[savedNick] || accounts[savedNick].uid !== savedUid) {
+                accounts[savedNick] = { passwordHash: savedPassHash, uid: savedUid, avatar: localStorage.getItem('vx_avatar'), createdAt: Date.now() };
                 VXAccounts.saveAll(accounts);
-                VXState.user.nickname = savedNick;
-                VXState.user.uid = savedUid;
-                VXState._pendingHash = savedPassHash;
-                VXState._pendingAuthType = 'login';
-                await this.startSequence();
-                return;
             }
+            VXState.user.nickname = savedNick;
+            VXState.user.uid = savedUid;
+            if (accounts[savedNick].avatar) VXState.user.avatar = accounts[savedNick].avatar;
+            VXState._pendingHash = savedPassHash;
+            VXState._pendingAuthType = 'login';
+            await this.startSequence();
+            return;
         }
         document.getElementById('modal-auth').classList.add('active');
     },
