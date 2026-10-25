@@ -691,7 +691,9 @@ class VXInterface {
                 const hash = await VXAccounts.hashPassword(pass);
                 VXState.user.nickname = nick;
                 VXState.user.uid = VXAccounts.getUid(nick) || ('node_' + Math.random().toString(36).substr(2, 9));
-                VXState._pendingHash = hash; VXState._pendingAuthType = 'login';
+VXState._pendingHash = hash; VXState._pendingAuthType = 'login';
+                localStorage.setItem('vx_pass_hash', hash);
+                localStorage.setItem('vx_nick', nick);
                 this.showToast("Отправка запроса на сервер...", "info");
                 VXApp.startSequence();
             }
