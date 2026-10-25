@@ -712,6 +712,7 @@ class VXInterface {
         }
         VXState.ui.avatars[VXState.user.uid] = VXState.user.avatar;
         this.setTheme(VXState.user.theme);
+        this.appendSystem('ЯДРО vX.3 · auth-error-safe · build 2026-10-25');
         const saved = JSON.parse(localStorage.getItem('vx_channels') || '[]');
         VXState.ui.channels = [...VXConfig.DEFAULT_CHANNELS, ...saved];
         this.renderChannels();
@@ -1190,10 +1191,13 @@ class VXNetwork {
                     VXApp.UI.renderMessageHTML(data, false);
                 }
                 else if (data.type === "auth_error") {
-                    VXApp.UI.appendSystem(`[AUTH ERROR] ${data.text}`);
-                    VXApp.UI.showToast(data.text, "error");
-                    VXApp.UI.openModal('modal-auth');
-                    localStorage.removeItem('vx_nick'); localStorage.removeItem('vx_uuid'); localStorage.removeItem('vx_pass_hash');
+                    // ВАЖНО: локальная сессия НЕ трогается. Сервер может не принять ключ,
+                    // но узел остаётся рабочим офлайн. Стираем креды только вручную (выход/формат).
+                    VXApp.UI.appendSystem(`⚠ СЕРВЕР ОТВЕРГ КЛЮЧ ДОСТУПА: ${data.text || 'без причины'}. Локальная сессия узла СОХРАНЕНА.`);
+                    if (!this._authWarned) {
+                        this._authWarned = true;
+                        VXApp.UI.showToast('Сервер не принял ключ — сеть недоступна, но узел работает локально', 'warn');
+                    }
                 }
                 else if (data.type === "login_success") {
                     VXApp.UI.appendSystem(`[SERVER] ${data.text}`);
@@ -1294,6 +1298,7 @@ const VXApp = {
         this.UI = new VXInterface();
         this.AIInterface = new VXAIInterface();
         this.Effects = new VXCanvasBG();
+        console.log('[VX BUILD] core-2026-10-25-autherror-safe');
         const savedNick = localStorage.getItem('vx_nick');
         const savedUid = localStorage.getItem('vx_uuid');
         const savedPassHash = localStorage.getItem('vx_pass_hash');
