@@ -1,8 +1,8 @@
-// ===================== VDEX PROFILE CARD =====================
+// ===================== VDEX PROFILE CARD v2 =====================
 (function () {
     const LS_MY = 'vx_my_profile', LS_CACHE = 'vx_profiles', LS_MYLIKES = 'vx_my_likes';
     const myUid = () => VXState.user.uid;
-    const getMy = () => { try { return JSON.parse(localStorage.getItem(LS_MY) || 'null') || { banner: 'b_grid', avatar: 'a_orb', style: 's_cyber', music: '', bio: '', theme: '', likes: [] }; } catch (e) { return { banner: 'b_grid', avatar: 'a_orb', style: 's_cyber', music: '', bio: '', theme: '', likes: [] }; } };
+    const getMy = () => { try { return JSON.parse(localStorage.getItem(LS_MY) || 'null') || { banner: 'b_grid', style: 's_cyber', music: '', bio: '', likes: [] }; } catch (e) { return { banner: 'b_grid', style: 's_cyber', music: '', bio: '', likes: [] }; } };
     const setMy = (p) => localStorage.setItem(LS_MY, JSON.stringify(p));
     const getCache = () => { try { return JSON.parse(localStorage.getItem(LS_CACHE) || '{}'); } catch (e) { return {}; } };
     const putCache = (uid, p) => { const c = getCache(); c[uid] = p; localStorage.setItem(LS_CACHE, JSON.stringify(c)); };
@@ -30,15 +30,14 @@
 .vxp-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--pc-a, #0ff); background: transparent; color: var(--pc-a, #0ff); font-family: var(--font-mono); font-size: 12px; cursor: pointer; }
 .vxp-btn.solid { background: var(--pc-a, #0ff); color: #000; }
 .vxp-btn.liked { background: #ff2965; border-color: #ff2965; color: #fff; }
-.vxp-edit { display: none; padding: 10px 20px 30px; }
-.vxp-edit.active { display: block; }
-.vxp-edit input, .vxp-edit textarea { width: 100%; background: #0d0d0d; border: 1px solid #333; border-radius: 8px; color: #ccc; padding: 8px; font-family: var(--font-mono); font-size: 12px; margin-bottom: 10px; }
 .vxp-sec { font-size: 10px; letter-spacing: 1.5px; color: #666; text-transform: uppercase; margin: 12px 0 6px; font-family: var(--font-mono); }
 .vxp-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .vxp-thumb { width: 64px; height: 40px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background-size: cover; }
 .vxp-thumb.av { width: 44px; height: 44px; border-radius: 50%; }
 .vxp-thumb.st { width: 44px; height: 44px; border-radius: 8px; }
-.vxp-thumb.sel { border-color: #fff; box-shadow: 0 0 10px var(--pc-a, #0ff); }
+.vxp-thumb.sel { border-color: #fff; box-shadow: 0 0 10px var(--vx-primary); }
+#vxp-section { border-top: 1px dashed #333; margin-top: 14px; padding-top: 10px; }
+#vxp-section input, #vxp-section textarea { width: 100%; background: #0d0d0d; border: 1px solid #333; border-radius: 8px; color: #ccc; padding: 8px; font-family: var(--font-mono); font-size: 12px; }
 `;
     document.head.appendChild(style);
 
@@ -74,18 +73,39 @@
             { id: 's_void', name: 'VOID', a: '#999', b: '#555' }
         ]
     };
-    const bannerCss = (id) => { const b = CATALOG.banners.find(x => x.id === id); return b ? b.css : (id && id.indexOf('url(') === 0 ? id : CATALOG.banners[0].css); };
-    const avatarUrl = (id) => { const a = CATALOG.avatars.find(x => x.id === id); return a ? a.url : (id && id.indexOf('data:') === 0 ? id : CATALOG.avatars[0].url); };
+    const bannerCss = (id) => { const b = CATALOG.banners.find(x => x.id === id); return b ? b.css : CATALOG.banners[0].css; };
     const styleOf = (id) => CATALOG.styles.find(x => x.id === id) || CATALOG.styles[0];
+
+    // ---------- ЕДИНЫЙ АВТОР АВАТАРОК (без конфликтов) ----------
+    function setAvatar(url) {
+        VXState.user.avatar = url || null;
+        if (url) localStorage.setItem('vx_avatar', url); else localStorage.removeItem('vx_avatar');
+        const acc = VXAccounts.getAll();
+        if (acc[VXState.user.nickname]) { acc[VXState.user.nickname].avatar = url || null; VXAccounts.saveAll(acc); }
+        VXState.ui.avatars[VXState.user.uid] = url || null;
+        const btn = document.getElementById('btn-profile');
+        if (btn) { btn.style.backgroundImage = url ? 'url(' + url + ')' : ''; btn.innerText = url ? '' : VXState.user.nickname.charAt(0).toUpperCase(); }
+        const prev = document.getElementById('vxs-avprev');
+        if (prev) { prev.style.backgroundImage = url ? 'url(' + url + ')' : ''; prev.innerText = url ? '' : VXState.user.nickname.charAt(0).toUpperCase(); }
+        VXApp.Network.transmit({ type: 'update_profile', nickname: VXState.user.nickname, avatar: url || null });
+        bcMyCard();
+    }
+    function applyRemoteAvatar(uid, url) {
+        if (!uid) return;
+        VXState.ui.avatars[uid] = url || null;
+        const pc = VXState.ui.presenceCache;
+        if (pc && pc[uid]) pc[uid].avatar = url || null;
+        const c = getCache();
+        if (c[uid]) { c[uid].avatar = url || null; putCache(uid, c[uid]); }
+    }
 
     // ---------- сеть ----------
     const bc = (obj) => VXApp.Network.transmit(obj);
     function bcMyCard() {
         const p = getMy();
+        p.avatar = VXState.user.avatar;
         p.sponsor = localStorage.getItem('vx_sponsor_on') === '1' || ['owner', 'admin'].includes(VXState.user.role);
-        if (!p.theme) {
-            try { const t = JSON.parse(localStorage.getItem('vx_custom_theme') || 'null'); p.theme = t ? t.name : (localStorage.getItem('vx_theme') || 'dark'); } catch (e) { p.theme = localStorage.getItem('vx_theme') || 'dark'; }
-        }
+        if (!p.theme) p.theme = localStorage.getItem('vx_theme') || 'dark';
         setMy(p);
         bc({ type: 'profile_card', uid: myUid(), profile: p });
     }
@@ -94,9 +114,16 @@
         if (!d || !d.type) return;
         if (d.type === 'profile_card' && d.uid !== myUid()) {
             putCache(d.uid, d.profile);
+            if (d.profile && d.profile.avatar !== undefined) applyRemoteAvatar(d.uid, d.profile.avatar);
             if (curUid === d.uid) renderCard(d.uid);
         } else if (d.type === 'profile_req' && d.targetUid === myUid()) {
             bcMyCard();
+        } else if (d.type === 'update_profile' && d.nickname) {
+            const pc = VXState.ui.presenceCache || {};
+            const hit = Object.values(pc).find(x => x.nickname === d.nickname);
+            const mc = (VXState.ui.membersCache || []).find(x => x.nickname === d.nickname);
+            const uid = (hit && hit.uid) || (mc && mc.uid);
+            if (uid && uid !== myUid()) applyRemoteAvatar(uid, d.avatar);
         } else if (d.type === 'profile_like' && d.targetUid === myUid()) {
             const p = getMy(); p.likes = p.likes || [];
             p.likes = p.likes.filter(u => u !== d.fromUid);
@@ -128,16 +155,12 @@
         VXApp.UI.showToast(on ? 'Лайк отправлен' : 'Лайк снят', 'info');
     }
 
-    // ---------- карточка ----------
-    let overlay = null, curUid = null, editMode = false;
-    function build() {
-        overlay = document.createElement('div');
-        overlay.id = 'vxp-overlay';
-        document.body.appendChild(overlay);
-    }
+    // ---------- карточка (только просмотр + лайк) ----------
+    let overlay = null, curUid = null;
+    function build() { overlay = document.createElement('div'); overlay.id = 'vxp-overlay'; document.body.appendChild(overlay); }
     function openCard(uid) {
         if (!overlay) build();
-        curUid = uid; editMode = false;
+        curUid = uid;
         overlay.classList.add('active');
         renderCard(uid);
         if (uid !== myUid() && !getCache()[uid]) bc({ type: 'profile_req', targetUid: uid });
@@ -151,10 +174,9 @@
         const nick = mine ? VXState.user.nickname : ((VXState.ui.membersCache || []).find(m => m.uid === uid) || {}).nickname || uid;
         const likesArr = p && p.likes ? p.likes : [];
         const iLiked = !!getMyLikes()[uid];
-        const banner = p ? bannerCss(p.banner) : bannerCss('b_void');
-        const av = p ? avatarUrl(p.avatar) : null;
+        const av = mine ? VXState.user.avatar : (p ? p.avatar : null);
         overlay.innerHTML =
-            '<div class="vxp-banner" style="background:' + banner + '"><button class="vxp-close" id="vxp-close">✕</button></div>' +
+            '<div class="vxp-banner" style="background:' + bannerCss(p ? p.banner : 'b_void') + '"><button class="vxp-close" id="vxp-close">✕</button></div>' +
             '<div class="vxp-head"><div class="vxp-av"' + (av ? ' style="background-image:url(' + av + ')"' : '') + '>' + (av ? '' : nick.charAt(0).toUpperCase()) + '</div>' +
             '<div class="vxp-name">' + nick + '</div><div class="vxp-uid">' + uid + '</div>' +
             '<div class="vxp-badges"><span class="vxp-badge">УЗЕЛ СЕТИ</span>' + (p && p.sponsor ? '<span class="vxp-badge gold">СПОНСОР</span>' : '') + '<span class="vxp-badge">' + st.name + '</span></div></div>' +
@@ -163,53 +185,63 @@
             '<div class="vxp-row">◆ любимая тема: <b>' + (p && p.theme ? p.theme : 'не указана') + '</b></div>' +
             (p && p.bio ? '<div class="vxp-bio">' + p.bio + '</div>' : '<div class="vxp-bio" style="opacity:.4">описание пустое...</div>') +
             '<div class="vxp-actions">' +
-            (mine ? '<button class="vxp-btn solid" id="vxp-edit">Редактировать карточку</button>' : '<button class="vxp-btn' + (iLiked ? ' liked' : '') + '" id="vxp-like">' + (iLiked ? '♥' : '♡') + ' ' + likesArr.length + '</button><button class="vxp-btn" id="vxp-dm">Написать</button>') +
-            '</div></div>' +
-            '<div class="vxp-edit" id="vxp-editbox"></div>';
+            (mine ? '<button class="vxp-btn solid" id="vxp-edit">Редактировать в профиле</button>' : '<button class="vxp-btn' + (iLiked ? ' liked' : '') + '" id="vxp-like">' + (iLiked ? '♥' : '♡') + ' ' + likesArr.length + '</button><button class="vxp-btn" id="vxp-dm">Написать</button>') +
+            '</div></div>';
         document.getElementById('vxp-close').onclick = () => overlay.classList.remove('active');
         const lk = document.getElementById('vxp-like'); if (lk) lk.onclick = () => toggleLike(uid);
         const dm = document.getElementById('vxp-dm'); if (dm) dm.onclick = () => { overlay.classList.remove('active'); VXApp.UI.openPrivateChat(uid, nick); };
-        const ed = document.getElementById('vxp-edit'); if (ed) ed.onclick = () => { editMode = !editMode; renderEdit(uid); };
-        if (editMode && mine) renderEdit(uid);
+        const ed = document.getElementById('vxp-edit'); if (ed) ed.onclick = () => { overlay.classList.remove('active'); const b = document.getElementById('btn-settings'); if (b) b.click(); setTimeout(() => { const s = document.getElementById('vxp-section'); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 400); };
     }
-    function renderEdit(uid) {
-        const box = document.getElementById('vxp-editbox');
-        if (!box) return;
-        if (!editMode) { box.classList.remove('active'); return; }
-        box.classList.add('active');
-        const p = getMy();
-        box.innerHTML =
-            '<div class="vxp-sec">Любимая музыка</div><input id="vxp-music" placeholder="напр. darkpsy / synthwave" value="' + (p.music || '') + '">' +
-            '<div class="vxp-sec">Описание</div><textarea id="vxp-bio" rows="3" placeholder="Пару слов о себе...">' + (p.bio || '') + '</textarea>' +
-            '<div class="vxp-sec">Баннер из каталога</div><div class="vxp-grid" id="vxp-g-b"></div>' +
+
+    // ---------- секция карточки В НАСТРОЙКАХ (профиль) ----------
+    let pendingAvatar = null;
+    function injectSection() {
+        const panel = document.querySelector('#vxs-modal .vxs-panel[data-p="profile"]') || document.querySelector('#vxs-modal .vxs-panel');
+        if (!panel || panel.querySelector('#vxp-section')) return;
+        const sec = document.createElement('div');
+        sec.id = 'vxp-section';
+        sec.innerHTML =
+            '<div class="vxs-label" style="margin-top:14px;">КАРТОЧКА УЗЛА</div>' +
+            '<div class="vxs-note">Баннер, музыка, описание и стиль — то, что видят другие в твоей карточке. Аватарка здесь одна и синхронна со всем клиентом.</div>' +
+            '<div class="vxp-sec">Любимая музыка</div><input id="vxp-music" placeholder="напр. darkpsy / synthwave">' +
+            '<div class="vxp-sec">Описание</div><textarea id="vxp-bio" rows="3" placeholder="Пару слов о себе..."></textarea>' +
+            '<div class="vxp-sec">Баннер</div><div class="vxp-grid" id="vxp-g-b"></div>' +
             '<div class="vxp-sec">Аватарка из каталога</div><div class="vxp-grid" id="vxp-g-a"></div>' +
             '<div class="vxp-sec">Стиль карточки</div><div class="vxp-grid" id="vxp-g-s"></div>' +
-            '<div class="vxp-actions"><button class="vxp-btn" id="vxp-upl">Загрузить свою аватарку</button><button class="vxp-btn solid" id="vxp-save">Сохранить и разослать</button></div>' +
+            '<div class="vxp-actions"><button class="vxp-btn" id="vxp-upl">Загрузить своё фото</button><button class="vxp-btn solid" id="vxp-savecard">Сохранить и разослать</button></div>' +
             '<input type="file" id="vxp-file" accept="image/*" hidden>';
-        const gb = document.getElementById('vxp-g-b');
-        CATALOG.banners.forEach(b => {
-            const t = document.createElement('div');
-            t.className = 'vxp-thumb' + (p.banner === b.id ? ' sel' : '');
-            t.style.background = b.css; t.title = b.name;
-            t.onclick = () => { p.banner = b.id; setMy(p); renderEdit(uid); };
-            gb.appendChild(t);
-        });
-        const ga = document.getElementById('vxp-g-a');
-        CATALOG.avatars.forEach(a => {
-            const t = document.createElement('div');
-            t.className = 'vxp-thumb av' + (p.avatar === a.id ? ' sel' : '');
-            t.style.backgroundImage = 'url(' + a.url + ')'; t.title = a.name;
-            t.onclick = () => { p.avatar = a.id; setMy(p); renderEdit(uid); };
-            ga.appendChild(t);
-        });
-        const gs = document.getElementById('vxp-g-s');
-        CATALOG.styles.forEach(s => {
-            const t = document.createElement('div');
-            t.className = 'vxp-thumb st' + (p.style === s.id ? ' sel' : '');
-            t.style.background = 'linear-gradient(135deg,' + s.a + ',' + s.b + ')'; t.title = s.name;
-            t.onclick = () => { p.style = s.id; setMy(p); renderEdit(uid); };
-            gs.appendChild(t);
-        });
+        panel.appendChild(sec);
+        const p = getMy();
+        document.getElementById('vxp-music').value = p.music || '';
+        document.getElementById('vxp-bio').value = p.bio || '';
+        pendingAvatar = null;
+        const paint = () => {
+            const gb = document.getElementById('vxp-g-b'); gb.innerHTML = '';
+            CATALOG.banners.forEach(b => {
+                const t = document.createElement('div');
+                t.className = 'vxp-thumb' + (p.banner === b.id ? ' sel' : '');
+                t.style.background = b.css; t.title = b.name;
+                t.onclick = () => { p.banner = b.id; paint(); };
+                gb.appendChild(t);
+            });
+            const ga = document.getElementById('vxp-g-a'); ga.innerHTML = '';
+            CATALOG.avatars.forEach(a => {
+                const t = document.createElement('div');
+                t.className = 'vxp-thumb av' + (pendingAvatar === a.url ? ' sel' : '');
+                t.style.backgroundImage = 'url(' + a.url + ')'; t.title = a.name;
+                t.onclick = () => { pendingAvatar = a.url; paint(); };
+                ga.appendChild(t);
+            });
+            const gs = document.getElementById('vxp-g-s'); gs.innerHTML = '';
+            CATALOG.styles.forEach(s => {
+                const t = document.createElement('div');
+                t.className = 'vxp-thumb st' + (p.style === s.id ? ' sel' : '');
+                t.style.background = 'linear-gradient(135deg,' + s.a + ',' + s.b + ')'; t.title = s.name;
+                t.onclick = () => { p.style = s.id; paint(); };
+                gs.appendChild(t);
+            });
+        };
+        paint();
         document.getElementById('vxp-upl').onclick = () => document.getElementById('vxp-file').click();
         document.getElementById('vxp-file').addEventListener('change', (e) => {
             const f = e.target.files[0]; if (!f) return;
@@ -221,25 +253,28 @@
                     let w = img.width, h = img.height; const MAX = 256;
                     if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
                     c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
-                    p.avatar = c.toDataURL('image/jpeg', 0.7); setMy(p); renderEdit(uid);
+                    pendingAvatar = c.toDataURL('image/jpeg', 0.7);
+                    paint();
                 };
                 img.src = ev.target.result;
             };
             r.readAsDataURL(f);
         });
-        document.getElementById('vxp-save').onclick = () => {
+        document.getElementById('vxp-savecard').onclick = () => {
             p.music = document.getElementById('vxp-music').value.trim();
             p.bio = document.getElementById('vxp-bio').value.trim();
             p.theme = '';
             setMy(p);
-            editMode = false;
-            bcMyCard();
-            renderCard(uid);
-            VXApp.UI.showToast('Карточка обновлена и разослана сети', 'info');
+            if (pendingAvatar) setAvatar(pendingAvatar); else bcMyCard();
+            pendingAvatar = null;
+            VXApp.UI.showToast('Карточка сохранена и разослана сети', 'info');
         };
     }
+    const mo = new MutationObserver(() => injectSection());
+    mo.observe(document.body, { childList: true, subtree: true });
+    setInterval(injectSection, 1500);
 
-    // ---------- точки входа ----------
+    // ---------- точки входа (открытие карточки) ----------
     const origRenderMsg = VXInterface.prototype.renderMessageHTML;
     VXInterface.prototype.renderMessageHTML = async function (data, skipSave) {
         const res = await origRenderMsg.call(this, data, skipSave);
