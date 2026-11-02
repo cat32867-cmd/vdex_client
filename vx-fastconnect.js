@@ -37,7 +37,7 @@
                     VXApp.UI.appendSystem('СОЕДИНЕНИЕ ЗАВИСЛО — ПЕРЕЗАПРОС КООРДИНАТ...');
                     try { sock.close(); } catch (e) {}
                 }
-            }, 8000);
+            }, 20000);
         }
         return r;
     };
