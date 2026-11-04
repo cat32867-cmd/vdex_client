@@ -6,18 +6,15 @@
     const getMeta = () => { try { return JSON.parse(localStorage.getItem(LS_META) || '{}'); } catch (e) { return {}; } };
     const setMeta = (m) => localStorage.setItem(LS_META, JSON.stringify(m));
 
-    // маркер правильного состояния span — защита от циклов перерисовки
     const keyOf = (url, letter, isGroup) => url ? ('u:' + url.length + ':' + url.slice(-24)) : (isGroup ? 'g:' + letter : 'p:' + letter);
 
     function spanFor(ch) {
         const isPriv = !!(ch.isPrivate || String(ch.id).indexOf('private_') === 0);
         if (isPriv) {
-            // ЛИЧКА: аватарка только из живого кэша, групповая логика сюда не лезет
             const url = VXState.ui.avatars[ch.targetUid] || null;
             const letter = (ch.name || '').replace('@', '').charAt(0).toUpperCase() || '?';
             return { url: url, letter: letter, isGroup: false };
         }
-        // ГРУППА: аватарка из общей меты, иначе решётка
         const m = getMeta()[ch.id];
         return { url: (m && m.avatar) ? m.avatar : null, letter: '#', isGroup: true };
     }
@@ -39,11 +36,13 @@
                 if (!nameEl) return;
                 const ch = byName[nameEl.textContent];
                 if (!ch) return;
+                const item = w.querySelector('.channel-item') || w;
+                // ДОЧИСТКА старых невидимых хэндлеров/иконок управления
+                item.querySelectorAll('.ch-manage, .ch-manage-btn, [data-manage]').forEach(el => el.remove());
                 const d = spanFor(ch);
                 const k = keyOf(d.url, d.letter, d.isGroup);
-                const item = w.querySelector('.channel-item') || w;
                 const old = item.querySelector('.ch-avatar, .ch-hash');
-                if (old && old.dataset && old.dataset.vxch === k) return; // уже правильно — НЕ трогаем
+                if (old && old.dataset && old.dataset.vxch === k) return; // уже правильно — не трогаем
                 const html = spanHtml(d, k);
                 if (old) old.outerHTML = html;
                 else item.insertAdjacentHTML('afterbegin', html);
@@ -54,21 +53,18 @@
     let t = null;
     const schedule = () => { clearTimeout(t); t = setTimeout(decorate, 60); };
 
-    // финальный проход после ЛЮБОЙ перерисовки списка (вкладки, бейджи, всё)
     const origRender = VXInterface.prototype.renderChannels;
     VXInterface.prototype.renderChannels = function () {
         const r = origRender.call(this);
         schedule();
         return r;
     };
-    // аватарки личек приезжают из members_list — список освежаем сразу
     const origMembers = VXInterface.prototype.updateMembersList;
     VXInterface.prototype.updateMembersList = function (m) {
         const r = origMembers.call(this, m);
         schedule();
         return r;
     };
-    // замок канала: ввод блокируется у не-владельцев
     function refreshInput() {
         const inp = document.getElementById('msg-input');
         if (!inp) return;
@@ -84,7 +80,6 @@
         schedule();
         return r;
     };
-    // страховка от поздних перерисовок других модулей (табы КАНАЛЫ/ЧАТЫ)
     const mo = new MutationObserver(() => schedule());
     const watch = () => {
         const c = document.getElementById('channel-list-container');
@@ -120,7 +115,6 @@
         const s = VXState.network.socket;
         if (s) {
             s.addEventListener('message', onWs);
-            // новичок спросил — сеть ответила: авы групп доезжают до запоздавших
             s.addEventListener('open', () => setTimeout(() => VXApp.Network.transmit({ type: 'channel_meta_req' }), 2500));
         }
         return r;
