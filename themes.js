@@ -1,9 +1,11 @@
-// ===================== VDEX THEMES HUB v3 =====================
+// ===================== VDEX THEMES HUB v4 (магазин + топ + избранное) =====================
 (function () {
     const OFFICIAL_URL = 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/themes.json';
-    const COMMUNITY_URL = 'https://raw.githubusercontent.com/cat32867-cmd/vdex-data/main/community.json';
     const LS_ACTIVE = 'vx_custom_theme';
     const LS_MY = 'vx_my_themes';
+    const LS_DOWN = 'vx_th_down';
+    const LS_FAV = 'vx_th_favs';
+    const LS_LIKE = 'vx_th_mylikes';
 
     const style = document.createElement('style');
     style.textContent = `
@@ -18,53 +20,73 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
 @keyframes vxtGlitch{0%,91%,100%{transform:none;clip-path:none;filter:none;}92%{transform:translateX(-4px) skewX(-3deg);clip-path:inset(5% 0 55% 0);filter:hue-rotate(90deg);}94%{transform:translateX(4px);clip-path:inset(45% 0 25% 0);}96%{clip-path:inset(75% 0 5% 0);transform:none;}}
 @keyframes vxtFlicker{0%,100%{opacity:.7;}45%{opacity:.95;}47%{opacity:.35;}49%{opacity:.85;}}
 @keyframes vxtNoise{to{background-position:90px 40px;}}
-.vxt-tabs{display:flex;gap:6px;padding:10px 16px 0;border-bottom:1px solid #1a1a1a;background:rgba(0,0,0,.2);}
-.vxt-tab{padding:8px 12px;font-family:var(--font-mono);font-size:12px;color:#888;background:transparent;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;}
-.vxt-tab.active{color:var(--vx-primary);border-color:#222;background:#0d0d0d;}
-.vxt-panel{display:none;padding:14px 16px;overflow-y:auto;}
-.vxt-panel.active{display:block;}
+.vxt-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1a1a1a;position:relative;}
+.vxt-burger{background:none;border:1px solid #333;border-radius:8px;color:var(--vx-primary);font-size:16px;padding:4px 10px;cursor:pointer;}
+.vxt-title{flex:1;font-family:var(--font-mono);font-size:14px;letter-spacing:2px;color:#ccc;}
+.vxt-menu{display:none;position:absolute;top:46px;left:12px;background:#141414;border:1px solid #2a2a2a;border-radius:10px;z-index:60;min-width:180px;overflow:hidden;}
+.vxt-menu.open{display:block;}
+.vxt-menu div{padding:10px 14px;font-family:var(--font-mono);font-size:12px;color:#bbb;cursor:pointer;border-bottom:1px solid #1c1c1c;}
+.vxt-menu div:last-child{border-bottom:none;}
+.vxt-menu div:hover{color:var(--vx-primary);}
+.vxt-panel{padding:12px 14px 16px;overflow-y:auto;flex:1;}
 .vxt-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
 .vxt-chips{display:flex;gap:6px;flex-wrap:wrap;}
 .vxt-chip{padding:4px 10px;font-size:10px;font-family:var(--font-mono);border:1px solid #333;border-radius:12px;color:#888;cursor:pointer;background:transparent;}
 .vxt-chip.active{border-color:var(--vx-primary);color:var(--vx-primary);}
 .vxt-search{flex:1;min-width:140px;background:#0d0d0d;border:1px solid #333;border-radius:8px;color:#ccc;padding:6px 10px;font-family:var(--font-mono);font-size:12px;}
 .vxt-list{display:flex;flex-direction:column;gap:8px;}
-.vxt-item{border:1px solid #222;border-radius:10px;padding:8px 10px;background:#0d0d0d;}
+.vxt-item{border:1px solid #222;border-radius:10px;padding:8px 10px;background:#0d0d0d;cursor:pointer;}
 .vxt-item.active{border-color:var(--vx-primary);}
-.vxt-row{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.vxt-row{display:flex;align-items:center;gap:10px;}
 .vxt-preview{display:flex;gap:3px;}
 .vxt-dot{width:12px;height:12px;border-radius:50%;}
 .vxt-name{flex:1;font-family:var(--font-mono);font-size:12px;color:#ccc;}
 .vxt-author{font-size:10px;color:#666;display:block;}
-.vxt-apply{padding:5px 10px;font-size:11px;}
-.vxt-actions{display:none;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed #222;}
-.vxt-item.open .vxt-actions{display:flex;}
-.vxt-actions button{padding:5px 10px;font-size:10px;}
 .vxt-badge{font-size:9px;padding:2px 6px;border:1px solid #333;border-radius:8px;color:#888;font-family:var(--font-mono);}
 .vxt-badge.top{color:var(--vx-warn,#ffcc00);border-color:var(--vx-warn,#ffcc00);}
+.vxt-badge.heart{color:#ff5d7a;border-color:#ff5d7a55;}
 .vxt-sec{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;font-weight:bold;margin:10px 0 6px;}
+.vxt-empty{font-size:11px;color:#555;padding:8px;}
+.vxt-desc{color:#c8c8d8;font-size:12px;white-space:pre-wrap;border:1px solid #222;border-radius:8px;padding:10px;background:#0a0a0a;min-height:48px;margin:8px 0;}
+.vxt-bigrow{display:flex;gap:8px;margin:10px 0;}
+.vxt-bigrow button{flex:1;padding:10px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:13px;background:#101014;}
+.vxt-like{border:1px solid #ff5d7a66;color:#ff5d7a;}
+.vxt-fav{border:1px solid #ffd75e66;color:#ffd75e;}
+.vxt-bar{display:flex;gap:8px;border-top:1px solid #1c1c1c;padding-top:10px;margin-top:10px;flex-wrap:wrap;}
+.vxt-bar button{padding:10px 12px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:12px;}
+.vxt-dl{flex:2;border:1px solid #0ff66;background:#06161a;color:#0ff;font-weight:700;}
+.vxt-share{flex:1;border:1px solid #33334466;background:#101018;color:#aab;}
+.vxt-del{flex:1;border:1px solid #55222266;background:#160a0a;color:#f66;}
 .vxt-fxseg{display:flex;flex-wrap:wrap;gap:6px;}
 .vxt-fxseg button{padding:6px 10px;font-size:11px;font-family:var(--font-mono);background:transparent;border:1px solid #333;border-radius:6px;color:#888;cursor:pointer;}
 .vxt-fxseg button.active{border-color:var(--vx-primary);color:var(--vx-primary);}
-.vxt-empty{font-size:11px;color:#555;padding:8px;}
 `;
     document.head.appendChild(style);
 
-    // ---------- состояние и применение ----------
-    const getActive = () => { try { return JSON.parse(localStorage.getItem(LS_ACTIVE) || 'null'); } catch (e) { return null; } };
-    const getMy = () => { try { return JSON.parse(localStorage.getItem(LS_MY) || '[]'); } catch (e) { return []; } };
-    const setMy = (a) => localStorage.setItem(LS_MY, JSON.stringify(a));
+    // ---------- хранилища ----------
+    const rd = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+    const wr = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+    const getActive = () => rd(LS_ACTIVE, null);
+    const getMy = () => rd(LS_MY, []);
+    const setMy = a => wr(LS_MY, a);
+    const getDown = () => rd(LS_DOWN, {});
+    const getFavs = () => rd(LS_FAV, []);
+    const getLikes = () => rd(LS_LIKE, []);
+
+    // ---------- применение тем ----------
     const ALL_VARS = ['--vx-primary', '--vx-primary-dim', '--vx-info', '--vx-danger', '--vx-warn', '--bg-color', '--panel-color', '--border-color'];
     function clearTheme() {
         ALL_VARS.forEach(k => document.documentElement.style.removeProperty(k));
         const bg = document.getElementById('vxt-bg'); if (bg) bg.remove();
         const fx = document.getElementById('vxt-fx'); if (fx) fx.remove();
+        const raw = document.getElementById('vxt-raw'); if (raw) raw.remove();
         ['fx-cyberpunk', 'fx-glitchcore', 'fx-vhs', 'fx-noise'].forEach(c => document.body.classList.remove(c));
     }
     function applyTheme(t) {
         clearTheme();
         if (!t) return;
         if (t.vars) for (const k in t.vars) document.documentElement.style.setProperty(k, t.vars[k]);
+        if (t.rawCss) { const s = document.createElement('style'); s.id = 'vxt-raw'; s.textContent = t.rawCss; document.head.appendChild(s); }
         if (t.bg) {
             const d = document.createElement('div');
             d.id = 'vxt-bg';
@@ -80,6 +102,13 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
             const c = JSON.parse(localStorage.getItem('vx_custom_color') || 'null');
             if (c) { document.documentElement.style.setProperty('--vx-primary', c); document.documentElement.style.setProperty('--vx-primary-dim', c + '1A'); }
         } catch (e) {}
+    }
+    function hydrate(t) {
+        if (!t) return null;
+        if (t.vars || t.rawCss) return t;
+        if (t.css && t.css.charAt(0) === '{') { try { return Object.assign({}, t, JSON.parse(t.css)); } catch (e) { return t; } }
+        if (t.css) return Object.assign({}, t, { rawCss: t.css });
+        return t;
     }
     function fileToBg(file, cb) {
         const r = new FileReader();
@@ -98,182 +127,272 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
         r.readAsDataURL(file);
     }
 
-    // ---------- данные ----------
-    let official = null, community = null;
-    const F = { offStyle: 'all', comStyle: 'all', comQuery: '', comTop: false };
+    // ---------- состояние витрины ----------
+    let official = null, catalog = [], stats = {};
+    let view = { mode: 'top', tag: null, detail: null, q: '' };
+    let menuOpen = false, pendingDl = null, pendingShare = null;
+    const likeCount = id => (stats[id] != null ? stats[id] : 0);
+    const inCatalog = id => catalog.some(x => x.id === id);
 
-    async function loadData() {
-        try {
-            const r1 = await fetch(OFFICIAL_URL + '?cb=' + Date.now());
-            official = r1.ok ? ((await r1.json()).themes || []) : [];
-        } catch (e) { official = []; }
-        try {
-            const r2 = await fetch(COMMUNITY_URL + '?cb=' + Date.now());
-            community = r2.ok ? ((await r2.json()).themes || []) : [];
-        } catch (e) { community = []; }
+    function findTheme(id) {
+        let t = getMy().find(x => x.id === id); if (t) return { t: t, src: 'my' };
+        t = getDown()[id]; if (t) return { t: t, src: 'down' };
+        const m = catalog.find(x => x.id === id); if (m) return { t: m, src: 'com' };
+        t = (official || []).find(x => x.id === id); if (t) return { t: t, src: 'off' };
+        return null;
     }
+    const tagsOf = t => (t.tags && t.tags.length) ? t.tags : (t.style ? [t.style] : []);
 
-    // ---------- элементы списка ----------
-    function dots(prev, t) {
-        ['--vx-primary', '--vx-info', '--vx-danger'].forEach(k => {
-            const d = document.createElement('div'); d.className = 'vxt-dot';
-            d.style.background = (t.vars && t.vars[k]) || '#333'; prev.appendChild(d);
-        });
-    }
-    function remoteItem(t, isCommunity, topIdx) {
-        const cur = getActive();
-        const item = document.createElement('div');
-        item.className = 'vxt-item' + (cur && cur.id === t.id ? ' active' : '');
-        const row = document.createElement('div'); row.className = 'vxt-row';
-        const prev = document.createElement('div'); prev.className = 'vxt-preview'; dots(prev, t);
-        const name = document.createElement('div'); name.className = 'vxt-name';
-        let badges = (t.style ? '<span class="vxt-badge">' + t.style + '</span> ' : '');
-        if (isCommunity && topIdx >= 0) badges = '<span class="vxt-badge top">TOP ' + (topIdx + 1) + '</span> ' + badges;
-        if (isCommunity && t.uses) badges += '<span class="vxt-badge">' + t.uses + ' исп.</span>';
-        name.innerHTML = (t.name || t.id) + badges + '<span class="vxt-author">by ' + (t.author || 'unknown') + '</span>';
-        const btn = document.createElement('button'); btn.className = 'btn-modal btn-submit vxt-apply'; btn.innerText = 'Взять';
-        btn.onclick = (ev) => { ev.stopPropagation(); localStorage.setItem(LS_ACTIVE, JSON.stringify(t)); applyTheme(t); VXApp.UI.showToast('Тема «' + t.name + '» применена', 'info'); };
-        row.appendChild(prev); row.appendChild(name); row.appendChild(btn);
-        item.appendChild(row);
-        return item;
-    }
-    function myItem(t) {
-        const cur = getActive();
-        const item = document.createElement('div');
-        item.className = 'vxt-item' + (cur && cur.id === t.id ? ' active' : '');
-        const row = document.createElement('div'); row.className = 'vxt-row';
-        const prev = document.createElement('div'); prev.className = 'vxt-preview'; dots(prev, t);
-        const name = document.createElement('div'); name.className = 'vxt-name';
-        name.innerHTML = (t.name || t.id) + (t.style ? ' <span class="vxt-badge">' + t.style + '</span>' : '') + '<span class="vxt-author">локальная тема</span>';
-        row.appendChild(prev); row.appendChild(name);
-        row.onclick = () => item.classList.toggle('open');
-        const act = document.createElement('div'); act.className = 'vxt-actions';
-        const mk = (txt, cls, fn) => { const b = document.createElement('button'); b.className = 'btn-modal ' + cls + ' vxt-apply'; b.innerText = txt; b.onclick = fn; return b; };
-        act.appendChild(mk('Применить', 'btn-submit', () => { localStorage.setItem(LS_ACTIVE, JSON.stringify(t)); applyTheme(t); VXApp.UI.showToast('Тема «' + t.name + '» применена', 'info'); }));
-        act.appendChild(mk('Переименовать', 'btn-cancel', () => {
-            const nn = prompt('Новое название темы:', t.name);
-            if (nn && nn.trim()) { t.name = nn.trim(); setMy(getMy().map(x => x.id === t.id ? t : x)); renderMy(); }
-        }));
-        act.appendChild(mk('Опубликовать', 'btn-submit', () => {
-            const code = JSON.stringify({ name: t.name, author: t.author || VXState.user.nickname, style: t.style || 'custom', effect: t.effect, bgOpacity: t.bgOpacity, bg: (t.bg && t.bg.indexOf('data:') !== 0) ? t.bg : undefined, vars: t.vars });
-            navigator.clipboard?.writeText(code);
-            VXApp.UI.showToast('Код темы скопирован. Кинь его в #DEV_NULL или владельцу — после модерации тема попадёт во вкладку «От пользователей»', 'info');
-        }));
-        act.appendChild(mk('Удалить', 'btn-danger', () => {
-            if (!confirm('Удалить тему «' + t.name + '»?')) return;
-            setMy(getMy().filter(x => x.id !== t.id));
-            const a = getActive(); if (a && a.id === t.id) { localStorage.removeItem(LS_ACTIVE); applyTheme(null); }
-            renderMy();
-        }));
-        item.appendChild(row); item.appendChild(act);
-        return item;
-    }
-
-    // ---------- рендеры вкладок ----------
-    function chipsFor(box, list, current, onPick) {
-        box.innerHTML = '';
-        const styles = ['all'];
-        list.forEach(t => { if (t.style && styles.indexOf(t.style) === -1) styles.push(t.style); });
-        styles.forEach(s => {
-            const c = document.createElement('button');
-            c.className = 'vxt-chip' + (current === s ? ' active' : '');
-            c.innerText = s === 'all' ? 'все стили' : s;
-            c.onclick = () => onPick(s);
-            box.appendChild(c);
-        });
-    }
-    function renderOfficial() {
-        const list = document.getElementById('vxt-off-list');
-        const chips = document.getElementById('vxt-off-chips');
-        if (!official) { list.innerHTML = '<div class="vxt-empty">Загрузка...</div>'; return; }
-        chipsFor(chips, official, F.offStyle, s => { F.offStyle = s; renderOfficial(); });
-        list.innerHTML = '';
-        const filtered = official.filter(t => F.offStyle === 'all' || t.style === F.offStyle);
-        if (!filtered.length) { list.innerHTML = '<div class="vxt-empty">Тем с таким стилем пока нет.</div>'; return; }
-        filtered.forEach(t => list.appendChild(remoteItem(t, false, -1)));
-    }
-    function renderMy() {
-        const list = document.getElementById('vxt-my-list');
-        list.innerHTML = '';
-        const my = getMy();
-        if (!my.length) { list.innerHTML = '<div class="vxt-empty">Пока пусто. Создай тему кнопкой внизу или импортируй код.</div>'; return; }
-        my.forEach(t => list.appendChild(myItem(t)));
-    }
-    function renderCommunity() {
-        const list = document.getElementById('vxt-com-list');
-        const chips = document.getElementById('vxt-com-chips');
-        if (!community) { list.innerHTML = '<div class="vxt-empty">Загрузка...</div>'; return; }
-        chipsFor(chips, community, F.comStyle, s => { F.comStyle = s; renderCommunity(); });
-        list.innerHTML = '';
-        let pool = community.slice();
-        if (F.comTop) { pool.sort((a, b) => (b.uses || 0) - (a.uses || 0)); pool = pool.slice(0, 10); }
-        if (F.comStyle !== 'all') pool = pool.filter(t => t.style === F.comStyle);
-        if (F.comQuery) {
-            const q = F.comQuery.toLowerCase();
-            pool = pool.filter(t => ((t.name || '') + ' ' + (t.author || '')).toLowerCase().indexOf(q) !== -1);
+    // ---------- сеть ----------
+    function onWs(ev) {
+        let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+        if (!d) return;
+        if (d.type === 'theme_catalog') { catalog = d.themes || []; render(); }
+        else if (d.type === 'theme_stats') { stats = d.stats || {}; render(); }
+        else if (d.type === 'theme_full' && d.theme) {
+            const dn = getDown(); dn[d.theme.id] = d.theme; wr(LS_DOWN, dn);
+            if (pendingShare === d.theme.id) { pendingShare = null; shareCopy(d.theme); }
+            if (pendingDl === d.theme.id) { pendingDl = null; VXApp.UI.showToast('Скачано: ' + d.theme.name, 'info'); }
+            render();
         }
-        if (!pool.length) { list.innerHTML = '<div class="vxt-empty">Ничего не найдено. Сообщество пока тихое.</div>'; return; }
-        const sortedForTop = community.slice().sort((a, b) => (b.uses || 0) - (a.uses || 0));
-        pool.forEach(t => list.appendChild(remoteItem(t, true, sortedForTop.indexOf(t))));
     }
+    const origConnect = VXNetwork.prototype.connect;
+    VXNetwork.prototype.connect = function (url) {
+        const r = origConnect.call(this, url);
+        const s = VXState.network.socket;
+        if (s) {
+            s.addEventListener('message', onWs);
+            s.addEventListener('open', () => setTimeout(() => {
+                VXApp.Network.transmit({ type: 'theme_catalog_req' });
+                VXApp.Network.transmit({ type: 'theme_stats_req' });
+            }, 2500));
+        }
+        return r;
+    };
 
-    // ---------- модалка ----------
+    // ---------- рендер ----------
+    function dotsHtml(t) {
+        const v = t.vars || {};
+        return '<div class="vxt-preview">' + ['--vx-primary', '--vx-info', '--vx-danger'].map(k => '<div class="vxt-dot" style="background:' + (v[k] || '#333') + '"></div>').join('') + '</div>';
+    }
+    function cardHtml(t, topIdx) {
+        const id = t.id, act = getActive();
+        const fav = getFavs().indexOf(id) !== -1, dl = !!getDown()[id];
+        let badges = '';
+        if (topIdx >= 0 && topIdx < 3) badges += '<span class="vxt-badge top">TOP ' + (topIdx + 1) + '</span> ';
+        tagsOf(t).slice(0, 2).forEach(g => { badges += '<span class="vxt-badge">' + g + '</span> '; });
+        if (inCatalog(id)) badges += '<span class="vxt-badge heart">❤ ' + likeCount(id) + '</span>';
+        return '<div class="vxt-item' + (act && act.id === id ? ' active' : '') + '" data-act="open" data-id="' + id + '">' +
+            '<div class="vxt-row">' + dotsHtml(t) +
+            '<div class="vxt-name">' + (t.name || id) + badges +
+            '<span class="vxt-author">by ' + (t.authorNick || t.author || 'unknown') + (fav ? ' · ★' : '') + (dl ? ' · ⬇' : '') + '</span></div></div></div>';
+    }
+    function poolTop() {
+        let list = catalog.slice();
+        if (view.q) { const q = view.q.toLowerCase(); list = list.filter(t => ((t.name || '') + ' ' + (t.authorNick || '')).toLowerCase().indexOf(q) !== -1); }
+        list.sort((a, b) => likeCount(b.id) - likeCount(a.id));
+        return list;
+    }
+    function tagCloud() {
+        const m = {};
+        catalog.forEach(t => tagsOf(t).forEach(g => { m[g] = (m[g] || 0) + 1; }));
+        (official || []).forEach(t => tagsOf(t).forEach(g => { m[g] = (m[g] || 0) + 1; }));
+        return Object.keys(m).map(g => ({ g: g, n: m[g] })).sort((a, b) => b.n - a.n);
+    }
+    function detailHtml(t, src) {
+        const id = t.id, fav = getFavs().indexOf(id) !== -1;
+        const liked = getLikes().indexOf(id) !== -1, dl = !!getDown()[id];
+        const applied = getActive() && getActive().id === id;
+        const canLike = inCatalog(id);
+        let bar = '';
+        if (src === 'com' && !dl) bar += '<button class="vxt-dl" data-act="dl" data-id="' + id + '">скачать</button>';
+        else bar += '<button class="vxt-dl" data-act="use" data-id="' + id + '">' + (applied ? '✓ применена' : 'использовать') + '</button>';
+        bar += '<button class="vxt-share" data-act="share" data-id="' + id + '">поделиться</button>';
+        if (dl) bar += '<button class="vxt-del" data-act="del" data-id="' + id + '">удалить</button>';
+        let extra = '';
+        if (src === 'com' && t.authorUid === VXState.user.uid) extra = '<button class="vxt-del" style="width:100%;margin-top:8px;" data-act="netdel" data-id="' + id + '">✕ удалить из сети (ты автор)</button>';
+        if (src === 'my') extra = '<button class="vxt-share" style="width:100%;margin-top:8px;" data-act="pub" data-id="' + id + '">Опубликовать в сети</button>';
+        return '<div style="padding:2px 2px 8px;">' +
+            '<div data-act="back" style="color:#888;font-size:12px;cursor:pointer;margin-bottom:8px;">‹ назад</div>' +
+            '<div style="font-size:16px;font-weight:800;color:#e8e8f0;letter-spacing:1px;font-family:var(--font-mono);">' + (t.name || id) + '</div>' +
+            '<div style="color:#8888a0;font-size:11px;margin:4px 0 8px;font-family:var(--font-mono);">автор: ' + (t.authorNick || t.author || 'unknown') + (canLike ? ' · ❤ ' + likeCount(id) : '') + '</div>' +
+            (tagsOf(t).length ? '<div class="vxt-chips" style="margin-bottom:8px;">' + tagsOf(t).map(g => '<span class="vxt-badge">#' + g + '</span>').join(' ') + '</div>' : '') +
+            '<div class="vxt-desc">' + (t.desc || 'без описания') + '</div>' +
+            '<div class="vxt-bigrow">' +
+            (canLike ? '<button class="vxt-like" data-act="like" data-id="' + id + '">' + (liked ? '❤ лайкнут' : '🤍 лайк') + '</button>' : '') +
+            '<button class="vxt-fav" data-act="fav" data-id="' + id + '">' + (fav ? '★ в избранном' : '☆ в избранное') + '</button>' +
+            '</div>' +
+            '<div class="vxt-bar">' + bar + '</div>' + extra + '</div>';
+    }
+    const TITLES = { top: '🏆 ТОП ТЕМ', my: '👤 МОИ ТЕМЫ', fav: '★ ИЗБРАННОЕ', filter: '🔎 ФИЛЬТР', official: 'ОТ VDEX' };
+    function bodyHtml() {
+        if (view.detail) { const f = findTheme(view.detail); return f ? detailHtml(f.t, f.src) : '<div class="vxt-empty">тема не найдена</div>'; }
+        if (view.mode === 'top') {
+            const list = poolTop();
+            return '<div class="vxt-tools"><input class="vxt-search" id="vxt-q" placeholder="поиск: имя или автор..." value="' + view.q + '"></div>' +
+                (list.length ? '<div class="vxt-list">' + list.map((t, i) => cardHtml(t, i)).join('') + '</div>' : '<div class="vxt-empty">В сети пока нет тем. Опубликуй свою кнопкой ＋</div>');
+        }
+        if (view.mode === 'my') {
+            const mine = catalog.filter(t => t.authorUid === VXState.user.uid);
+            const loc = getMy();
+            let h = '<div class="vxt-sec">в сети (мой ник)</div>';
+            h += mine.length ? '<div class="vxt-list">' + mine.map(t => cardHtml(t, -1)).join('') + '</div>' : '<div class="vxt-empty">пока не опубликовано ни одной</div>';
+            h += '<div class="vxt-sec">локальные</div>';
+            h += loc.length ? '<div class="vxt-list">' + loc.map(t => cardHtml(t, -1)).join('') + '</div>' : '<div class="vxt-empty">создай конструктором ＋</div>';
+            return h;
+        }
+        if (view.mode === 'fav') {
+            const favs = getFavs();
+            const items = favs.map(id => findTheme(id)).filter(Boolean);
+            return items.length ? '<div class="vxt-list">' + items.map(f => cardHtml(f.t, -1)).join('') + '</div>' : '<div class="vxt-empty">Избранное пусто. Ставь ★ на темах.</div>';
+        }
+        if (view.mode === 'filter') {
+            if (!view.tag) {
+                const cloud = tagCloud();
+                return cloud.length ? cloud.map(x => '<div class="vxt-item" data-act="tag" data-tag="' + x.g + '"><div class="vxt-row" style="justify-content:space-between;"><span class="vxt-name">#' + x.g + '</span><span class="vxt-badge">' + x.n + ' тем</span></div></div>').join('') : '<div class="vxt-empty">хештегов пока нет</div>';
+            }
+            const all = catalog.concat(official || []);
+            const list = all.filter(t => tagsOf(t).indexOf(view.tag) !== -1);
+            return '<div data-act="untag" style="color:#888;font-size:12px;cursor:pointer;margin-bottom:8px;">‹ все хештеги</div>' +
+                (list.length ? '<div class="vxt-list">' + list.map(t => cardHtml(t, -1)).join('') + '</div>' : '<div class="vxt-empty">пусто</div>');
+        }
+        // official
+        const list = (official || []).filter(t => !view.tag || tagsOf(t).indexOf(view.tag) !== -1);
+        if (!official) return '<div class="vxt-empty">Загрузка...</div>';
+        const cloud = tagCloud().filter(x => (official || []).some(t => tagsOf(t).indexOf(x.g) !== -1));
+        return '<div class="vxt-chips" style="margin-bottom:10px;">' + cloud.map(x => '<button class="vxt-chip' + (view.tag === x.g ? ' active' : '') + '" data-act="offtag" data-tag="' + x.g + '">#' + x.g + '</button>').join('') + '</div>' +
+            (list.length ? '<div class="vxt-list">' + list.map(t => cardHtml(t, -1)).join('') + '</div>' : '<div class="vxt-empty">Тем с таким стилем пока нет.</div>');
+    }
     let modal = null;
+    function render() {
+        if (!modal || !modal.classList.contains('active')) return;
+        modal.querySelector('#vxt-title').textContent = view.detail ? 'ТЕМА' : TITLES[view.mode];
+        modal.querySelector('#vxt-menu').classList.toggle('open', menuOpen);
+        modal.querySelector('#vxt-body').innerHTML = bodyHtml();
+        const q = modal.querySelector('#vxt-q');
+        if (q) q.oninput = e => { view.q = e.target.value.trim(); render(); };
+    }
     function buildModal() {
         modal = document.createElement('div');
         modal.className = 'overlay'; modal.id = 'vxt-modal';
         modal.innerHTML = '<div class="modal" style="max-width:480px;height:84vh;">' +
-            '<header class="modal-header"><h2 class="modal-title">ТЕМЫ VDEX</h2><button class="btn-close" id="vxt-close">✕</button></header>' +
-            '<div class="vxt-tabs">' +
-            '<button class="vxt-tab active" data-p="off">От VDEX</button>' +
-            '<button class="vxt-tab" data-p="my">Мои</button>' +
-            '<button class="vxt-tab" data-p="com">От пользователей</button>' +
-            '</div>' +
-            '<div class="modal-body" style="padding:0;flex:1;">' +
-            '<div class="vxt-panel active" data-p="off"><div class="vxt-tools"><div class="vxt-chips" id="vxt-off-chips"></div></div><div class="vxt-list" id="vxt-off-list"></div></div>' +
-            '<div class="vxt-panel" data-p="my"><div class="vxt-tools"><button class="btn-modal btn-cancel vxt-apply" id="vxt-import">Импорт кода</button></div><div class="vxt-list" id="vxt-my-list"></div><div class="vxt-empty">Тап по теме открывает действия: применить, переименовать, опубликовать, удалить.</div></div>' +
-            '<div class="vxt-panel" data-p="com"><div class="vxt-tools"><input class="vxt-search" id="vxt-com-search" placeholder="поиск: имя или автор..."><button class="vxt-chip" id="vxt-com-top">ТОП-10</button></div><div class="vxt-tools"><div class="vxt-chips" id="vxt-com-chips"></div></div><div class="vxt-list" id="vxt-com-list"></div></div>' +
-            '</div>' +
-            '<footer class="modal-footer"><button class="btn-modal btn-cancel" id="vxt-reset">Сброс</button><button class="btn-modal btn-submit" id="vxt-create">Создать тему</button></footer></div>';
+            '<div class="vxt-head">' +
+            '<button class="vxt-burger" data-act="menu">☰</button>' +
+            '<span id="vxt-title" class="vxt-title"></span>' +
+            '<button class="vxt-burger" data-act="create">＋</button>' +
+            '<button class="vxt-burger" data-act="close">✕</button>' +
+            '<div class="vxt-menu" id="vxt-menu">' +
+            '<div data-act="mode" data-mode="top">🏆 Топ</div>' +
+            '<div data-act="mode" data-mode="my">👤 Мои</div>' +
+            '<div data-act="mode" data-mode="fav">★ Избранное</div>' +
+            '<div data-act="mode" data-mode="filter">🔎 Фильтр</div>' +
+            '<div data-act="mode" data-mode="official">От VDEX</div>' +
+            '<div data-act="import">Импорт кода</div>' +
+            '</div></div>' +
+            '<div class="vxt-panel" id="vxt-body"></div>' +
+            '<footer class="modal-footer"><button class="btn-modal btn-cancel" data-act="reset">Сброс</button><button class="btn-modal btn-submit" data-act="create">Создать тему</button></footer></div>';
         document.body.appendChild(modal);
-        modal.querySelectorAll('.vxt-tab').forEach(tb => tb.onclick = () => {
-            modal.querySelectorAll('.vxt-tab').forEach(x => x.classList.toggle('active', x === tb));
-            modal.querySelectorAll('.vxt-panel').forEach(p => p.classList.toggle('active', p.dataset.p === tb.dataset.p));
-        });
-        document.getElementById('vxt-close').onclick = () => modal.classList.remove('active');
-        document.getElementById('vxt-reset').onclick = () => { localStorage.removeItem(LS_ACTIVE); applyTheme(null); VXApp.UI.showToast('Тема сброшена к базовой', 'info'); };
-        document.getElementById('vxt-create').onclick = openBuilder;
-        document.getElementById('vxt-import').onclick = () => {
-            const code = prompt('Вставь код темы (JSON):');
-            if (!code) return;
-            try {
-                const t = JSON.parse(code);
-                if (!t.name) throw new Error('no name');
-                t.id = 'imp_' + Date.now();
-                const my = getMy(); my.push(t); setMy(my);
-                VXApp.UI.showToast('Тема «' + t.name + '» добавлена в «Мои»', 'info');
-                renderMy();
-            } catch (e) { VXApp.UI.showToast('Не похоже на код темы', 'error'); }
-        };
-        document.getElementById('vxt-com-search').oninput = e => { F.comQuery = e.target.value.trim(); renderCommunity(); };
-        document.getElementById('vxt-com-top').onclick = e => {
-            F.comTop = !F.comTop;
-            e.target.classList.toggle('active', F.comTop);
-            renderCommunity();
-        };
     }
     async function openThemes() {
         if (!modal) buildModal();
         modal.classList.add('active');
-        official = null; community = null;
-        renderOfficial(); renderMy(); renderCommunity();
-        await loadData();
-        renderOfficial(); renderCommunity();
+        view = { mode: 'top', tag: null, detail: null, q: '' };
+        official = null;
+        render();
+        try {
+            const r = await fetch(OFFICIAL_URL + '?cb=' + Date.now());
+            official = r.ok ? ((await r.json()).themes || []) : [];
+        } catch (e) { official = []; }
+        VXApp.Network.transmit({ type: 'theme_catalog_req' });
+        VXApp.Network.transmit({ type: 'theme_stats_req' });
+        render();
     }
+
+    // ---------- действия ----------
+    function shareCopy(t) {
+        const code = JSON.stringify({ name: t.name, author: t.authorNick || t.author || VXState.user.nickname, style: t.style || (t.tags || [])[0] || 'custom', desc: t.desc, effect: t.effect, bgOpacity: t.bgOpacity, bg: (t.bg && t.bg.indexOf('data:') !== 0) ? t.bg : undefined, vars: t.vars });
+        navigator.clipboard?.writeText(code);
+        VXApp.UI.showToast('Код темы скопирован — друг вставит через ☰ → Импорт', 'info');
+    }
+    document.addEventListener('click', e => {
+        const el = e.target.closest('[data-act]');
+        if (!el || !modal || !modal.contains(el)) return;
+        const act = el.dataset.act, id = el.dataset.id;
+        if (act === 'close') { modal.classList.remove('active'); return; }
+        if (act === 'menu') { menuOpen = !menuOpen; render(); return; }
+        if (act === 'mode') { view = { mode: el.dataset.mode, tag: null, detail: null, q: '' }; menuOpen = false; render(); return; }
+        if (act === 'create') { menuOpen = false; openBuilder(); return; }
+        if (act === 'reset') { localStorage.removeItem(LS_ACTIVE); applyTheme(null); VXApp.UI.showToast('Тема сброшена к базовой', 'info'); return; }
+        if (act === 'import') {
+            const code = prompt('Вставь код темы (JSON):');
+            if (code) {
+                try {
+                    const t = JSON.parse(code);
+                    if (!t.name) throw new Error('x');
+                    t.id = 'imp_' + Date.now();
+                    const my = getMy(); my.push(t); setMy(my);
+                    VXApp.UI.showToast('Тема «' + t.name + '» добавлена в «Мои»', 'info');
+                    view = { mode: 'my', tag: null, detail: null, q: '' }; render();
+                } catch (err) { VXApp.UI.showToast('Не похоже на код темы', 'error'); }
+            }
+            menuOpen = false; render(); return;
+        }
+        if (act === 'open') { view.detail = id; render(); return; }
+        if (act === 'back') { view.detail = null; render(); return; }
+        if (act === 'tag') { view = { mode: 'filter', tag: el.dataset.tag, detail: null, q: '' }; render(); return; }
+        if (act === 'untag') { view.tag = null; render(); return; }
+        if (act === 'offtag') { view.tag = (view.tag === el.dataset.tag ? null : el.dataset.tag); render(); return; }
+        if (act === 'like') {
+            const my = getLikes(); const on = my.indexOf(id) === -1;
+            if (on) my.push(id); else my.splice(my.indexOf(id), 1);
+            wr(LS_LIKE, my);
+            VXApp.Network.transmit({ type: 'theme_like', themeId: id, on: on });
+            render(); return;
+        }
+        if (act === 'fav') {
+            const f = getFavs();
+            if (f.indexOf(id) === -1) f.push(id); else f.splice(f.indexOf(id), 1);
+            wr(LS_FAV, f); render(); return;
+        }
+        if (act === 'dl') { pendingDl = id; VXApp.Network.transmit({ type: 'theme_get', themeId: id }); VXApp.UI.showToast('Скачиваю...', 'info'); return; }
+        if (act === 'use') {
+            const f = findTheme(id); if (!f) return;
+            const full = hydrate(f.t);
+            localStorage.setItem(LS_ACTIVE, JSON.stringify(full));
+            applyTheme(full);
+            VXApp.UI.showToast('Тема «' + full.name + '» применена', 'info');
+            render(); return;
+        }
+        if (act === 'del') {
+            const dn = getDown(); delete dn[id]; wr(LS_DOWN, dn);
+            const a = getActive(); if (a && a.id === id) { localStorage.removeItem(LS_ACTIVE); applyTheme(null); }
+            VXApp.UI.showToast('Локальная копия удалена', 'info'); render(); return;
+        }
+        if (act === 'netdel') { VXApp.Network.transmit({ type: 'theme_delete', themeId: id }); view.detail = null; render(); return; }
+        if (act === 'share') {
+            const f = findTheme(id);
+            if (f && (f.src === 'my' || f.src === 'down' || f.src === 'off')) shareCopy(f.t);
+            else { pendingShare = id; VXApp.Network.transmit({ type: 'theme_get', themeId: id }); }
+            return;
+        }
+        if (act === 'pub') {
+            const t = getMy().find(x => x.id === id); if (!t) return;
+            VXApp.Network.transmit({
+                type: 'theme_publish',
+                theme: {
+                    id: t.id, name: t.name, desc: t.desc || '',
+                    tags: (t.tags && t.tags.length) ? t.tags : [t.style || 'custom'],
+                    css: JSON.stringify({ vars: t.vars || {}, bg: (t.bg && t.bg.indexOf('data:') !== 0) ? t.bg : undefined, bgOpacity: t.bgOpacity, effect: t.effect })
+                }
+            });
+            VXApp.UI.showToast('Тема ушла в сеть (фото не переносится — лимит размера)', 'info');
+            view = { mode: 'my', tag: null, detail: null, q: '' }; render(); return;
+        }
+    });
 
     // ---------- конструктор ----------
     let builder = null;
-    let draft = { name: '', style: '', vars: {}, bg: null, bgOpacity: 0.35, effect: 'none' };
+    let draft = { name: '', style: '', desc: '', vars: {}, bg: null, bgOpacity: 0.35, effect: 'none' };
     function openBuilder() {
         if (!builder) {
             builder = document.createElement('div');
@@ -282,9 +401,10 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
                 '<header class="modal-header"><h2 class="modal-title">КОНСТРУКТОР ТЕМЫ</h2><button class="btn-close" id="vxb-close">✕</button></header>' +
                 '<div class="modal-body">' +
                 '<div class="form-group"><label>Название</label><input class="form-input" id="vxb-name" placeholder="напр. NEON RAIN"></div>' +
-                '<div class="form-group"><label>Стиль (для фильтров)</label><input class="form-input" id="vxb-style" placeholder="напр. hyperpunk"></div>' +
+                '<div class="form-group"><label>Стиль / хештег</label><input class="form-input" id="vxb-style" placeholder="напр. hyperpunk"></div>' +
+                '<div class="form-group"><label>Описание</label><input class="form-input" id="vxb-desc" placeholder="пара слов о теме"></div>' +
                 '<div class="vxt-sec">Фон</div>' +
-                '<div class="vxt-row"><button class="btn-modal btn-cancel vxt-apply" id="vxb-photo">Фото с устройства</button><button class="btn-modal btn-cancel vxt-apply" id="vxb-nophoto">Убрать фото</button></div>' +
+                '<div class="vxt-row"><button class="btn-modal btn-cancel" id="vxb-photo" style="padding:6px 10px;font-size:11px;">Фото с устройства</button><button class="btn-modal btn-cancel" id="vxb-nophoto" style="padding:6px 10px;font-size:11px;">Убрать фото</button></div>' +
                 '<input type="file" id="vxb-file" accept="image/*" hidden>' +
                 '<div class="form-group"><label>Прозрачность фона: <span id="vxb-opv">0.35</span></label><input type="range" id="vxb-op" min="0.05" max="1" step="0.05" value="0.35" style="width:100%;"></div>' +
                 '<div class="vxt-sec">Эффект</div>' +
@@ -307,14 +427,15 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
                 if (!name) return VXApp.UI.showToast('Дай теме имя', 'warn');
                 draft.name = name;
                 draft.style = (document.getElementById('vxb-style').value.trim() || 'custom').toLowerCase();
+                draft.desc = document.getElementById('vxb-desc').value.trim();
                 draft.author = VXState.user.nickname || 'anon';
                 draft.id = 'my_' + Date.now();
                 const my = getMy(); my.push(JSON.parse(JSON.stringify(draft))); setMy(my);
                 localStorage.setItem(LS_ACTIVE, JSON.stringify(draft));
                 applyTheme(draft);
                 builder.classList.remove('active');
-                VXApp.UI.showToast('Тема «' + name + '» сохранена и включена', 'info');
-                renderMy();
+                VXApp.UI.showToast('Тема «' + name + '» сохранена. Опубликуй её из «Мои»', 'info');
+                render();
             };
         }
         builder.classList.add('active');
@@ -325,7 +446,6 @@ body.fx-noise #vxt-fx{opacity:.08;background-image:url("data:image/svg+xml;utf8,
         e.stopPropagation(); e.preventDefault();
         openThemes();
     }, true);
-
     applyTheme(getActive());
     document.addEventListener('DOMContentLoaded', () => applyTheme(getActive()));
 })();
